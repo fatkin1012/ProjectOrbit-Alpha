@@ -1,32 +1,78 @@
 # SAP Local Wiki
 
-Since SAP GUI has way too many different T-codes and so many different functions, this project is a local wiki where you can save how you got specific data or solved specific SAP issues.
+A local-first SAP case knowledge app for saving proven solutions, screenshots, and reusable troubleshooting notes.
 
-The goal is simple: capture your working solution once, then search and reuse it anytime.
+Goal: capture the fix once, find it fast next time.
 
-## What This Web App Can Do
+## Features
 
-1. Create SAP cases with rich details.
-2. Add multiple T-codes to one case.
-3. Search cases by T-code, title, requirement, or solution steps.
-4. Filter cases by T-code chips.
-5. Upload multiple screenshots when creating a case.
-6. Paste screenshots directly with Ctrl+V when creating a case.
-7. Remove screenshots before saving a case.
-8. Expand and collapse each case to view full details.
-9. Edit solution text for an existing case.
-10. Add more screenshots while editing a case.
-11. Remove screenshots while editing a case.
-12. Paste screenshots with Ctrl+V while editing a case.
-13. Open screenshots in a fullscreen picture viewer.
-14. Navigate screenshots in the viewer (Prev/Next and keyboard arrows).
-15. Draw marks/signs on screenshots in the viewer.
-16. Change drawing color and brush size.
-17. Clear drawn marks in the viewer.
-18. Save a marked version as a new screenshot copy.
-19. Copy all case T-codes to clipboard.
-20. Remove cases you no longer need.
-21. Keep all data in local storage so your notes stay on your machine.
+1. Create SAP cases with title, requirement, and resolution steps.
+2. Attach multiple T-codes to one case.
+3. Search by T-code, title, requirement, or solution text.
+4. Filter by T-code chips.
+5. Upload or paste screenshots with Ctrl+V.
+6. Edit existing solutions and screenshots.
+7. Open screenshots in fullscreen picture viewer.
+8. Annotate screenshots in viewer.
+9. Use brush color and size controls.
+10. Erase parts of drawings with eraser mode.
+11. Undo drawing actions.
+12. Save annotated screenshot as a new copy.
+13. Export all local wiki data to JSON backup.
+14. Import JSON backup to restore wiki data.
+15. Install as a PWA app (Install App flow).
+16. Keep data local in browser localStorage.
+
+## Privacy Model
+
+- No backend database is used.
+- No cloud sync is built in.
+- Data is stored in browser localStorage on your machine.
+- GitHub receives data only if you manually commit files; localStorage data is not part of git.
+
+## Backup and Transfer
+
+Use header buttons:
+
+- Export Backup: downloads all cases to a JSON file.
+- Import Backup: restore from exported JSON on this browser/device.
+
+This makes it easy to move your wiki data to another machine manually.
+
+## Run Modes
+
+### Development mode
+
+```bash
+npm.cmd run dev
+```
+
+Open http://localhost:3000.
+
+### Production mode (recommended for daily use)
+
+Build once after code changes:
+
+```bash
+npm.cmd run build
+```
+
+Start app server:
+
+```bash
+npm.cmd run start
+```
+
+Use this mode when you do not want to run dev each time.
+
+## PWA Install Flow
+
+1. Start the app in production mode.
+2. Open http://localhost:3000 in Edge or Chrome.
+3. Click Install App when the install prompt appears.
+4. Launch from Start Menu/Desktop like an app window.
+
+Note: The app still runs from your local machine; keep the local server running when you use it.
 
 ## Tech Stack
 
@@ -34,24 +80,3 @@ The goal is simple: capture your working solution once, then search and reuse it
 - React
 - TypeScript
 - Tailwind CSS
-
-## Getting Started
-
-Run the development server:
-
-```bash
-npm run dev
-```
-
-Open http://localhost:3000 in your browser.
-
-## Build
-
-```bash
-npm run build
-```
-
-## Notes
-
-- Data is stored in browser localStorage, not in a backend database.
-- This is designed to be a local knowledge tool for SAP work patterns.

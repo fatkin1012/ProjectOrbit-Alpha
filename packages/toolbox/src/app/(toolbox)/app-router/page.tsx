@@ -97,19 +97,54 @@ function AppRouterContent() {
           >
             ☰
           </button>
-          <h1>Toolbox App Router</h1>
+          <h1>🧰 Toolbox</h1>
+          <button 
+            className={styles.homeButton}
+            onClick={() => navigate("/")}
+            title="Back to home"
+          >
+            🏠
+          </button>
         </div>
 
         {/* Plugin Routes */}
         <div className={styles.content}>
           <Routes>
-            {/* Default route */}
+            {/* Default route - Features Dashboard */}
             <Route
               path="/"
               element={
-                <div className={styles.welcome}>
-                  <h2>Welcome to Toolbox</h2>
-                  <p>Select an option from the menu to get started.</p>
+                <div className={styles.dashboard}>
+                  <div className={styles.dashboardHeader}>
+                    <h2>🧰 Toolbox</h2>
+                    <p>Select a feature to get started</p>
+                  </div>
+                  
+                  <div className={styles.featureGrid}>
+                    {plugins.map((plugin) => (
+                      <div key={plugin.id} className={styles.featureCard}>
+                        {plugin.menu.map((item) => (
+                          <button
+                            key={item.to}
+                            onClick={() => navigate(item.to)}
+                            className={styles.featureButton}
+                          >
+                            <div className={styles.featureIcon}>
+                              {item.icon || "📦"}
+                            </div>
+                            <h3>{item.label}</h3>
+                            <p>{plugin.name || plugin.id}</p>
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+
+                  {plugins.length === 0 && (
+                    <div className={styles.emptyState}>
+                      <p>No features available at this time.</p>
+                    </div>
+                  )}
                 </div>
               }
             />

@@ -17,7 +17,6 @@ function AppRouterContent() {
   const [plugins, setPlugins] = useState<ToolboxPlugin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     async function loadPlugins() {
@@ -49,55 +48,19 @@ function AppRouterContent() {
 
   return (
     <div className={styles.container}>
-      {/* Sidebar */}
-      <aside className={`${styles.sidebar} ${mobileSidebarOpen ? styles.open : ""}`}>
-        <div className={styles.sidebarHeader}>
-          <h2>Toolbox</h2>
-          <button
-            className={styles.closeSidebar}
-            onClick={() => setMobileSidebarOpen(false)}
-            aria-label="Close sidebar"
-          >
-            ✕
-          </button>
-        </div>
-        <nav className={styles.menu}>
-          <ul>
-            {plugins.map((plugin) =>
-              plugin.menu.map((item) => (
-                <li key={`${plugin.id}-${item.to}`}>
-                  <Link
-                    to={item.to}
-                    onClick={() => {
-                      navigate(item.to);
-                      setMobileSidebarOpen(false);
-                    }}
-                    className={styles.menuItem}
-                  >
-                    {item.icon && <span className={styles.icon}>{item.icon}</span>}
-                    <span>{item.label}</span>
-                  </Link>
-                </li>
-              ))
-            )}
-          </ul>
-        </nav>
-        <div className={styles.footer}>
-          <small>© 2024 Toolbox</small>
-        </div>
-      </aside>
-
-      {/* Main Content */}
       <main className={styles.main}>
         <div className={styles.topbar}>
-          <button
-            className={styles.hamburger}
-            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-            aria-label="Toggle sidebar"
-          >
-            ☰
-          </button>
           <h1>🧰 Toolbox</h1>
+          <nav className={styles.topNav} aria-label="Tool navigation">
+            {plugins.flatMap((plugin) =>
+              plugin.menu.map((item) => (
+                <Link key={`${plugin.id}-${item.to}`} to={item.to} className={styles.topNavItem}>
+                  {item.icon && <span className={styles.icon}>{item.icon}</span>}
+                  <span>{item.label}</span>
+                </Link>
+              ))
+            )}
+          </nav>
           <button 
             className={styles.homeButton}
             onClick={() => navigate("/")}
@@ -171,14 +134,6 @@ function AppRouterContent() {
           </Routes>
         </div>
       </main>
-
-      {/* Overlay for mobile */}
-      {mobileSidebarOpen && (
-        <div
-          className={styles.overlay}
-          onClick={() => setMobileSidebarOpen(false)}
-        />
-      )}
     </div>
   );
 }

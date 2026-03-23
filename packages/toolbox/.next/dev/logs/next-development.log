@@ -1,38 +1,24 @@
-[00:00:02.642] Server  LOG     ✓ Ready in 1826ms
-[00:00:05.768] Server  LOG     ○ Compiling /app/[...slug] ...
-[00:00:14.245] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:14.487] Browser WARN    ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
-[00:00:14.487] Browser WARN    ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
-[00:00:14.487] Browser LOG     ✓ Initialized 1 plugin(s)
-[00:00:14.487] Browser WARN    Plugin with id "sap-playbook" already registered, skipping.
-[00:00:14.487] Browser LOG     ✓ Initialized 1 plugin(s)
-[00:00:14.850] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:14.885] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:15.007] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:15.049] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:15.147] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:15.218] Browser WARN    ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
-[00:00:15.218] Browser WARN    ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
-[00:00:15.218] Browser LOG     ✓ Initialized 1 plugin(s)
-[00:00:15.218] Browser WARN    Plugin with id "sap-playbook" already registered, skipping.
-[00:00:15.218] Browser LOG     ✓ Initialized 1 plugin(s)
-[00:00:16.224] Browser WARN    ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
-[00:00:16.224] Browser WARN    ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
-[00:00:16.224] Browser LOG     ✓ Initialized 1 plugin(s)
-[00:00:16.224] Browser WARN    Plugin with id "sap-playbook" already registered, skipping.
-[00:00:16.224] Browser LOG     ✓ Initialized 1 plugin(s)
-[00:00:16.225] Browser WARN    ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
-[00:00:16.225] Browser WARN    ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
-[00:00:16.225] Browser LOG     ✓ Initialized 1 plugin(s)
-[00:00:16.225] Browser WARN    Plugin with id "sap-playbook" already registered, skipping.
-[00:00:16.225] Browser LOG     ✓ Initialized 1 plugin(s)
-[00:00:16.225] Browser WARN    ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
-[00:00:16.225] Browser WARN    ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
-[00:00:16.225] Browser LOG     ✓ Initialized 1 plugin(s)
-[00:00:16.225] Browser WARN    Plugin with id "sap-playbook" already registered, skipping.
-[00:00:16.225] Browser LOG     ✓ Initialized 1 plugin(s)
-[00:00:16.226] Browser WARN    ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
-[00:00:16.226] Browser WARN    ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
-[00:00:16.226] Browser LOG     ✓ Initialized 1 plugin(s)
-[00:00:16.226] Browser WARN    Plugin with id "sap-playbook" already registered, skipping.
-[00:00:16.226] Browser LOG     ✓ Initialized 1 plugin(s)
+[00:00:02.458] Server  LOG     ✓ Ready in 1682ms
+[00:00:05.575] Server  LOG     ○ Compiling /app/[...slug] ...
+[00:00:08.784] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:08.916] Browser WARN    ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+[00:00:08.916] Browser WARN    ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+[00:00:08.916] Browser LOG     ✓ Initialized 1 plugin(s)
+[00:00:08.916] Browser WARN    Plugin with id "sap-playbook" already registered, skipping.
+[00:00:08.916] Browser LOG     ✓ Initialized 1 plugin(s)
+[00:01:24.944] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:01:25.090] Browser WARN    ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+[00:01:25.090] Browser WARN    ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+[00:01:25.090] Browser LOG     ✓ Initialized 1 plugin(s)
+[00:01:25.090] Browser WARN    Plugin with id "sap-playbook" already registered, skipping.
+[00:01:25.090] Browser LOG     ✓ Initialized 1 plugin(s)
+[00:03:13.878] Server  LOG     ✓ Compiled in 4.9s
+[00:03:14.096] Browser WARN    Plugin with id "sap-playbook" already registered, skipping.
+[00:03:14.097] Browser LOG     ✓ Initialized 1 plugin(s)
+[00:03:29.023] Server  LOG     ✓ Compiled in 443ms
+[00:04:42.949] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:04:43.128] Browser WARN    ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+[00:04:43.128] Browser WARN    ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+[00:04:43.128] Browser LOG     ✓ Initialized 1 plugin(s)
+[00:04:43.129] Browser WARN    Plugin with id "sap-playbook" already registered, skipping.
+[00:04:43.129] Browser LOG     ✓ Initialized 1 plugin(s)

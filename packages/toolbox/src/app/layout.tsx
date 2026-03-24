@@ -13,8 +13,8 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "Toolbox Platform",
-  description: "A local-first toolbox web app with extensible feature modules.",
+  title: "ProjectOrbit",
+  description: "A local-first web app platform with extensible feature modules.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/icon.svg",

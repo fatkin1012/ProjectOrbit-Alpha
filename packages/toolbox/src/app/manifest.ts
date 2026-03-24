@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Toolbox Platform",
-    short_name: "Toolbox",
-    description: "Local-first toolbox with extensible feature modules.",
+    name: "ProjectOrbit",
+    short_name: "ProjectOrbit",
+    description: "Local-first web app platform with extensible feature modules.",
     start_url: "/",
     scope: "/",
     display: "standalone",

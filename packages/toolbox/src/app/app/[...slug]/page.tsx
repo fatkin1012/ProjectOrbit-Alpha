@@ -54,7 +54,7 @@ function AppRouterContent() {
     <div className={styles.container}>
       <main className={styles.main}>
         <div className={styles.topbar}>
-          <h1>🧰 Toolbox</h1>
+          <h1>ProjectOrbit</h1>
           <nav className={styles.topNav} aria-label="Tool navigation">
             {plugins.flatMap((plugin) =>
               plugin.menu.map((item) => (
@@ -84,7 +84,7 @@ function AppRouterContent() {
               element={
                 <div className={styles.dashboard}>
                   <div className={styles.dashboardHeader}>
-                    <h2>🧰 Toolbox</h2>
+                    <h2>ProjectOrbit</h2>
                     <p>Select a feature to get started</p>
                   </div>
                   

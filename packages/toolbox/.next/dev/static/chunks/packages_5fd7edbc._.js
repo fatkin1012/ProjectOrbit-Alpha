@@ -1771,18 +1771,18 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist
 "use client";
 ;
 ;
-const previewUrl = null;
+const previewUrl = "/imported/fatkin1012-sap-local-wiki/index.html";
 const repoUrl = "https://github.com/fatkin1012/SAP-Local-Wiki";
 const sourcePath = "packages/imported-repos/fatkin1012-sap-local-wiki";
 const title = "Sap Local Wiki";
 const readmeExcerpt = "# SAP Local Wiki\r\n\r\nA local-first SAP case knowledge app for saving proven solutions, screenshots, and reusable troubleshooting notes.\r\n\r\nGoal: capture the fix once, find it fast next time.\r\n\r\n## Features\r\n\r\n1. Create SAP cases with title, requirement, and resolution steps.\r\n2. Attach multiple T-codes to one case.\r\n3. Search by T-code, title, requirement, or solution text.\r\n4. Filter by T-code chips.\r\n5. Upload or paste screenshots with Ctrl+V.\r\n6. Edit existing solutions and screenshots.\r\n7. Open screenshots in fullscreen picture viewer.\r\n8. Annotate screenshots in viewer.\r\n9. Use brush color and size controls.\r\n10. Erase parts of drawings with eraser mode.\r\n11. Undo drawing actions.\r\n12. Save annotated screenshot as a new copy.\r\n13. Export all local wiki data to JSON backup.\r\n14. Import JSON backup to restore wiki data.\r\n15. Install as a PWA app (Install App flow).\r\n16. Keep data local in browser localStorage.\r\n\r\n## Privacy Model\r\n\r\n- No backend database is used.\r\n- No cloud sync is built in.\r\n- Data is stored in browser localStorage on your machine.\r\n- GitHub receives data only if you manually commit files; localStorage data is not part of git.\r\n\r\n## Backup and Transfer\r\n\r\nUse header buttons:\r\n\r\n- Export Backup: downloads all cases to a JSON file.\r\n- Import Backup: restore from exported JSON on this browser/device.\r\n\r\nThis makes it easy to move your wiki data to another machine manually.\r\n\r\n## Run Modes\r\n\r\n### Development mode\r\n\r\n```bash\r\nnpm.cmd run dev\r\n```\r\n\r\nOpen http://localhost:3000.\r\n\r\n### Production mode (recommended for daily use)\r\n\r\nBuild once after code change";
 function GeneratedFeatureRoot() {
     const $ = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$compiler$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["c"])(2);
-    if ($[0] !== "4f7fa216f0e208fdbaa7a5979393a38a0b64588c10c25509319bc30802613c3e") {
+    if ($[0] !== "b7720e224405069de01d62841560c2bd85a27f67770c35c4ef42e429233cb1c2") {
         for(let $i = 0; $i < 2; $i += 1){
             $[$i] = Symbol.for("react.memo_cache_sentinel");
         }
-        $[0] = "4f7fa216f0e208fdbaa7a5979393a38a0b64588c10c25509319bc30802613c3e";
+        $[0] = "b7720e224405069de01d62841560c2bd85a27f67770c35c4ef42e429233cb1c2";
     }
     let t0;
     if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
@@ -1790,31 +1790,29 @@ function GeneratedFeatureRoot() {
             className: "-m-6 flex h-[calc(100dvh-4.25rem)] min-h-[calc(100dvh-4.25rem)] w-[calc(100%+3rem)] flex-col bg-white",
             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
                 className: "flex h-full min-h-0 w-full flex-1 flex-col",
-                children: ("TURBOPACK compile-time falsy", 0) ? /*#__PURE__*/ "TURBOPACK unreachable" : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
-                    className: "h-full w-full overflow-auto bg-white p-4",
-                    children: [
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                            className: "text-sm text-slate-700",
-                            children: "No static index.html preview was detected for this repository. You can still use its code from the local folder and adapt it to a native React feature package."
-                        }, void 0, false, {
-                            fileName: "[project]/packages/features-fatkin1012-sap-local-wiki/src/GeneratedFeatureRoot.tsx",
-                            lineNumber: 24,
-                            columnNumber: 169
-                        }, this),
-                        ("TURBOPACK compile-time truthy", 1) ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("pre", {
-                            className: "mt-3 max-h-80 overflow-auto rounded-xl bg-white/85 p-3 text-xs leading-6 text-slate-700",
-                            children: readmeExcerpt
-                        }, void 0, false, {
-                            fileName: "[project]/packages/features-fatkin1012-sap-local-wiki/src/GeneratedFeatureRoot.tsx",
-                            lineNumber: 24,
-                            columnNumber: 387
-                        }, this) : "TURBOPACK unreachable"
-                    ]
-                }, void 0, true, {
+                children: ("TURBOPACK compile-time truthy", 1) ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "flex min-h-0 flex-1 overflow-hidden bg-white",
+                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("iframe", {
+                        src: previewUrl,
+                        title: title + " preview",
+                        style: {
+                            width: "100%",
+                            height: "100%",
+                            border: 0,
+                            backgroundColor: "#fff"
+                        },
+                        loading: "lazy",
+                        sandbox: "allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads allow-presentation"
+                    }, void 0, false, {
+                        fileName: "[project]/packages/features-fatkin1012-sap-local-wiki/src/GeneratedFeatureRoot.tsx",
+                        lineNumber: 19,
+                        columnNumber: 266
+                    }, this)
+                }, void 0, false, {
                     fileName: "[project]/packages/features-fatkin1012-sap-local-wiki/src/GeneratedFeatureRoot.tsx",
-                    lineNumber: 24,
-                    columnNumber: 107
-                }, this)
+                    lineNumber: 19,
+                    columnNumber: 204
+                }, this) : /*#__PURE__*/ "TURBOPACK unreachable"
             }, void 0, false, {
                 fileName: "[project]/packages/features-fatkin1012-sap-local-wiki/src/GeneratedFeatureRoot.tsx",
                 lineNumber: 19,

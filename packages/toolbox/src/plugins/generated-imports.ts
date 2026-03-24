@@ -13,6 +13,6 @@ export const generatedPlugins: ToolboxPlugin[] = [
     featureOctocatHelloWorldPlugin,
         featureOctocatSpoonKnifePlugin,
     featureFatkin1012GrandOpeningPlugin,
-      featureFatkin1012SapLocalWikiPlugin,
+        featureFatkin1012SapLocalWikiPlugin,
   // __AUTO_PLUGINS_END__
 ];

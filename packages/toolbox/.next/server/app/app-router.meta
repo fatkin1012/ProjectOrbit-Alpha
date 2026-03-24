@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(toolbox)/layout,_N_T_/(toolbox)/app-router/layout,_N_T_/(toolbox)/app-router/page,_N_T_/app-router"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/!KHRvb2xib3gp/app-router/__PAGE__",
+    "/!KHRvb2xib3gp/app-router",
+    "/!KHRvb2xib3gp",
+    "/_index",
+    "/_head"
+  ]
+}

@@ -15,6 +15,11 @@ type ImportedRepoRecord = {
   activatedFeaturePackage?: string;
   activatedRoute?: string;
   activatedAt?: string;
+  nativeTransformLevel?: "strict" | "balanced" | "safe";
+  nativeScaffoldMode?: "native" | "iframe";
+  nativeScaffoldReason?: string;
+  nativeRiskScore?: number;
+  nativeRiskBand?: "low" | "medium" | "high";
 };
 
 function formatDate(value: string): string {
@@ -76,6 +81,7 @@ export function RepoImporterRoot() {
   const { repos, loading, error, refresh } = useImportedRepos();
   const [repoUrl, setRepoUrl] = useState("");
   const [importing, setImporting] = useState(false);
+  const [transformLevel, setTransformLevel] = useState<"strict" | "balanced" | "safe">("balanced");
   const [activatingRepoId, setActivatingRepoId] = useState<string | null>(null);
   const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -128,7 +134,7 @@ export function RepoImporterRoot() {
       const response = await fetch("/api/repo-import/activate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repoId }),
+        body: JSON.stringify({ repoId, transformLevel }),
       });
 
       const data = (await response.json()) as {
@@ -141,7 +147,7 @@ export function RepoImporterRoot() {
       }
 
       setStatus(
-        `Activated ${data.activated?.name ?? repoId} as ${data.activated?.activatedFeaturePackage ?? "feature package"}. Restart dev server to load it.`,
+        `Activated ${data.activated?.name ?? repoId} as ${data.activated?.activatedFeaturePackage ?? "feature package"} using ${transformLevel} mode. Restart dev server to load it.`,
       );
       await refresh();
       if (data.activated?.activatedRoute) {
@@ -239,6 +245,19 @@ export function RepoImporterRoot() {
               className="h-12 w-full rounded-xl border-2 border-emerald-200 bg-white/90 px-3 text-sm outline-none transition focus:border-emerald-500"
             />
             <div className="flex flex-wrap items-center gap-2">
+              <label className="text-xs font-semibold text-slate-700" htmlFor="transform-level">
+                Native Transform Level
+              </label>
+              <select
+                id="transform-level"
+                value={transformLevel}
+                onChange={(event) => setTransformLevel(event.target.value as "strict" | "balanced" | "safe")}
+                className="h-11 rounded-xl border-2 border-slate-300 bg-white/90 px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-emerald-500"
+              >
+                <option value="safe">safe (low risk only)</option>
+                <option value="balanced">balanced (recommended)</option>
+                <option value="strict">strict (prefer native)</option>
+              </select>
               <button
                 type="submit"
                 disabled={importing}
@@ -279,6 +298,16 @@ export function RepoImporterRoot() {
                   <p className="mt-1 text-xs font-semibold text-emerald-700">
                     Active native feature: {repo.activatedFeaturePackage}
                   </p>
+                ) : null}
+                {repo.nativeScaffoldMode ? (
+                  <p className="mt-1 text-xs text-slate-700">
+                    Scaffold mode: {repo.nativeScaffoldMode} ({repo.nativeTransformLevel ?? "balanced"})
+                    {repo.nativeRiskBand ? ` • risk ${repo.nativeRiskBand}` : ""}
+                    {typeof repo.nativeRiskScore === "number" ? ` (${repo.nativeRiskScore})` : ""}
+                  </p>
+                ) : null}
+                {repo.nativeScaffoldReason ? (
+                  <p className="mt-1 text-xs text-slate-600">{repo.nativeScaffoldReason}</p>
                 ) : null}
 
                 <div className="mt-3 flex flex-wrap gap-2">

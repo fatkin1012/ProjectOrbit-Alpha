@@ -1,9 +1,19 @@
-[00:00:13.037] Server  LOG     ✓ Ready in 10.6s
-[00:00:16.375] Server  LOG     ○ Compiling /api/repo-import ...
-[00:00:35.634] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:35.792] Browser LOG     ✓ Initialized 5 plugin(s)
-[00:00:35.792] Browser LOG     ✓ Initialized 5 plugin(s)
-[00:00:38.875] Server  LOG     ✓ Compiled in 271ms
-[00:00:39.178] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:39.311] Browser LOG     ✓ Initialized 6 plugin(s)
-[00:00:39.311] Browser LOG     ✓ Initialized 6 plugin(s)
+[00:00:02.588] Server  LOG     ✓ Ready in 1712ms
+[00:00:11.432] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:16.980] Server  LOG     ○ Compiling /app/[...slug] ...
+[00:00:19.845] Browser LOG     ✓ Initialized 6 plugin(s)
+[00:00:19.845] Browser LOG     ✓ Initialized 6 plugin(s)
+[00:04:25.024] Server  LOG     ✓ Compiled in 1795ms
+[00:04:26.926] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:04:27.313] Browser LOG     ✓ Initialized 6 plugin(s)
+[00:04:27.313] Browser LOG     ✓ Initialized 6 plugin(s)
+[00:04:29.474] Server  LOG     ✓ Compiled in 339ms
+[00:04:35.465] Server  LOG     ✓ Compiled in 94ms
+[00:13:59.038] Server  LOG     ✓ Compiled in 163ms
+[00:16:16.182] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:16:16.480] Browser LOG     ✓ Initialized 6 plugin(s)
+[00:16:16.480] Browser LOG     ✓ Initialized 6 plugin(s)
+[00:19:09.799] Server  LOG     ✓ Compiled in 895ms
+[00:25:31.726] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:25:33.333] Browser LOG     ✓ Initialized 6 plugin(s)
+[00:25:33.333] Browser LOG     ✓ Initialized 6 plugin(s)

@@ -15,7 +15,14 @@ export type ImportedRepoRecord = {
   activatedFeaturePackage?: string;
   activatedRoute?: string;
   activatedAt?: string;
+  nativeTransformLevel?: NativeTransformLevel;
+  nativeScaffoldMode?: "native" | "iframe";
+  nativeScaffoldReason?: string;
+  nativeRiskScore?: number;
+  nativeRiskBand?: "low" | "medium" | "high";
 };
+
+export type NativeTransformLevel = "strict" | "balanced" | "safe";
 
 const STORE_FILE = path.join(process.cwd(), ".toolbox-imports.json");
 const SOURCE_ROOT = path.resolve(process.cwd(), "..", "imported-repos");
@@ -134,6 +141,46 @@ type PackageManifest = {
   devDependencies?: Record<string, string>;
 };
 
+type NativeScaffoldPlan = {
+  shouldUseNative: boolean;
+  reason: string;
+  routeFileRelativePath: string | null;
+  moduleLabels: string[];
+  sourceManifest: PackageManifest | null;
+  hasAppProviders: boolean;
+  hasGlobalStyles: boolean;
+  appEntryImportPath: string | null;
+  riskScore: number;
+  riskBand: "low" | "medium" | "high";
+  transformLevel: NativeTransformLevel;
+};
+
+function normalizeNativeTransformLevel(value?: string | null): NativeTransformLevel {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "strict" || normalized === "safe" || normalized === "balanced") {
+    return normalized;
+  }
+
+  const fromEnv = (process.env.TOOLBOX_NATIVE_TRANSFORM_LEVEL ?? "").trim().toLowerCase();
+  if (fromEnv === "strict" || fromEnv === "safe" || fromEnv === "balanced") {
+    return fromEnv;
+  }
+
+  return "balanced";
+}
+
+function toRiskBand(score: number): "low" | "medium" | "high" {
+  if (score <= 3) {
+    return "low";
+  }
+
+  if (score <= 6) {
+    return "medium";
+  }
+
+  return "high";
+}
+
 function resolveCommandBinary(command: string): string {
   return process.platform === "win32" ? `${command}.cmd` : command;
 }
@@ -196,6 +243,243 @@ async function readPackageManifest(repoPath: string): Promise<PackageManifest | 
     return JSON.parse(raw) as PackageManifest;
   } catch {
     return null;
+  }
+}
+
+function mergePackageMap(
+  base: Record<string, string>,
+  incoming: Record<string, string> | undefined,
+): Record<string, string> {
+  if (!incoming) {
+    return base;
+  }
+
+  const next = { ...base };
+  for (const [name, version] of Object.entries(incoming)) {
+    next[name] = version;
+  }
+
+  return next;
+}
+
+async function detectReactRouterRouteFile(repoPath: string): Promise<string | null> {
+  const candidates = [
+    path.join(repoPath, "src", "pages", "routes.tsx"),
+    path.join(repoPath, "src", "pages", "routes.ts"),
+    path.join(repoPath, "src", "routes.tsx"),
+    path.join(repoPath, "src", "routes.ts"),
+  ];
+
+  for (const candidate of candidates) {
+    if (!(await exists(candidate))) {
+      continue;
+    }
+
+    const content = await readFile(candidate, "utf8");
+    if (/createBrowserRouter|BrowserRouter/.test(content)) {
+      return path.relative(repoPath, candidate).replace(/\\/g, "/");
+    }
+  }
+
+  return null;
+}
+
+async function detectAppEntryImportPath(repoPath: string): Promise<string | null> {
+  const candidates: Array<{ filePath: string; importPath: string }> = [
+    { filePath: path.join(repoPath, "src", "App.tsx"), importPath: "./App" },
+    { filePath: path.join(repoPath, "src", "App.ts"), importPath: "./App" },
+    { filePath: path.join(repoPath, "src", "app", "App.tsx"), importPath: "./app/App" },
+    { filePath: path.join(repoPath, "src", "app", "App.ts"), importPath: "./app/App" },
+  ];
+
+  for (const candidate of candidates) {
+    if (await exists(candidate.filePath)) {
+      return candidate.importPath;
+    }
+  }
+
+  return null;
+}
+
+async function extractFeatureModuleLabels(repoPath: string, routeFileRelativePath: string | null): Promise<string[]> {
+  const moduleLabels = new Set<string>();
+  const moduleFileCandidates = [
+    path.join(repoPath, "src", "app", "modules.ts"),
+    path.join(repoPath, "src", "modules.ts"),
+    path.join(repoPath, "src", "config", "modules.ts"),
+  ];
+
+  for (const moduleFile of moduleFileCandidates) {
+    if (!(await exists(moduleFile))) {
+      continue;
+    }
+
+    const content = await readFile(moduleFile, "utf8");
+    const titleMatches = content.matchAll(/title\s*:\s*["'`]([^"'`]+)["'`]/g);
+    for (const match of titleMatches) {
+      if (match[1]) {
+        moduleLabels.add(match[1].trim());
+      }
+    }
+  }
+
+  if (routeFileRelativePath) {
+    const routeFilePath = path.join(repoPath, routeFileRelativePath);
+    if (await exists(routeFilePath)) {
+      const routeContent = await readFile(routeFilePath, "utf8");
+      const routeMatches = routeContent.matchAll(/path\s*:\s*["'`]([^"'`]+)["'`]/g);
+      for (const match of routeMatches) {
+        const routePath = (match[1] || "").trim();
+        if (!routePath || routePath === "*" || routePath === "/") {
+          continue;
+        }
+
+        const routeLabel = routePath
+          .replace(/^\//, "")
+          .split("/")
+          .filter(Boolean)
+          .slice(-1)[0]
+          ?.replace(/[-_]/g, " ")
+          .replace(/\b\w/g, (value) => value.toUpperCase());
+
+        if (routeLabel) {
+          moduleLabels.add(routeLabel);
+        }
+      }
+    }
+  }
+
+  return Array.from(moduleLabels).slice(0, 24);
+}
+
+async function analyzeNativeScaffoldPlan(
+  repoPath: string,
+  transformLevel: NativeTransformLevel,
+): Promise<NativeScaffoldPlan> {
+  const sourceManifest = await readPackageManifest(repoPath);
+  const hasReact = hasDependency(sourceManifest ?? {}, "react");
+  const hasReactRouter = hasDependency(sourceManifest ?? {}, "react-router-dom");
+  const hasNext = hasDependency(sourceManifest ?? {}, "next");
+  const hasVite = hasDependency(sourceManifest ?? {}, "vite");
+  const routeFileRelativePath = await detectReactRouterRouteFile(repoPath);
+  const moduleLabels = await extractFeatureModuleLabels(repoPath, routeFileRelativePath);
+  const appEntryImportPath = await detectAppEntryImportPath(repoPath);
+
+  const hasAppProviders = await exists(path.join(repoPath, "src", "app", "providers.tsx"));
+  const hasGlobalStyles = await exists(path.join(repoPath, "src", "styles", "globals.css"));
+
+  let riskScore = 0;
+  if (!hasReact) {
+    riskScore += 10;
+  }
+
+  if (!hasReactRouter) {
+    riskScore += 3;
+  }
+
+  if (!routeFileRelativePath) {
+    riskScore += 3;
+  }
+
+  if (!appEntryImportPath) {
+    riskScore += 2;
+  }
+
+  if (hasNext) {
+    riskScore += 3;
+  }
+
+  if (!hasGlobalStyles) {
+    riskScore += 1;
+  }
+
+  if (hasVite) {
+    riskScore = Math.max(0, riskScore - 1);
+  }
+
+  const riskBand = toRiskBand(riskScore);
+
+  if (!hasReact) {
+    return {
+      shouldUseNative: false,
+      reason: "No React dependency detected.",
+      routeFileRelativePath: null,
+      moduleLabels,
+      sourceManifest,
+      hasAppProviders,
+      hasGlobalStyles,
+      appEntryImportPath,
+      riskScore,
+      riskBand,
+      transformLevel,
+    };
+  }
+
+  if (!appEntryImportPath) {
+    return {
+      shouldUseNative: false,
+      reason: "App entry file was not detected (expected src/App.tsx or src/app/App.tsx).",
+      routeFileRelativePath,
+      moduleLabels,
+      sourceManifest,
+      hasAppProviders,
+      hasGlobalStyles,
+      appEntryImportPath,
+      riskScore,
+      riskBand,
+      transformLevel,
+    };
+  }
+
+  const routeReady = Boolean(hasReactRouter && routeFileRelativePath);
+  let shouldUseNative = false;
+  let reason = "";
+
+  if (transformLevel === "strict") {
+    shouldUseNative = routeReady || hasReact;
+    reason = shouldUseNative
+      ? `Strict mode enabled native scaffold (risk: ${riskBand}, score: ${riskScore}).`
+      : "Strict mode fallback to iframe due to missing React entry signals.";
+  } else if (transformLevel === "safe") {
+    shouldUseNative = routeReady && !hasNext && riskScore <= 3;
+    reason = shouldUseNative
+      ? `Safe mode approved native scaffold (risk: ${riskBand}, score: ${riskScore}).`
+      : `Safe mode fallback to iframe (risk: ${riskBand}, score: ${riskScore}).`;
+  } else {
+    shouldUseNative = routeReady && riskScore <= 6;
+    reason = shouldUseNative
+      ? `Balanced mode approved native scaffold (risk: ${riskBand}, score: ${riskScore}).`
+      : `Balanced mode fallback to iframe (risk: ${riskBand}, score: ${riskScore}).`;
+  }
+
+  return {
+    shouldUseNative,
+    reason,
+    routeFileRelativePath,
+    moduleLabels,
+    sourceManifest,
+    hasAppProviders,
+    hasGlobalStyles,
+    appEntryImportPath,
+    riskScore,
+    riskBand,
+    transformLevel,
+  };
+}
+
+async function convertRouteFileToMemoryRouter(packageDir: string, routeFileRelativePath: string): Promise<void> {
+  const routeFilePath = path.join(packageDir, routeFileRelativePath);
+  if (!(await exists(routeFilePath))) {
+    return;
+  }
+
+  let routeSource = await readFile(routeFilePath, "utf8");
+  const original = routeSource;
+
+  routeSource = routeSource.replace(/\bcreateBrowserRouter\b/g, "createMemoryRouter");
+
+  if (routeSource !== original) {
+    await writeFile(routeFilePath, routeSource, "utf8");
   }
 }
 
@@ -334,15 +618,11 @@ async function normalizeCopiedPreviewIndex(previewPath: string): Promise<void> {
 
   let html = await readFile(indexPath, "utf8");
 
-  // Vite build output often uses /assets/* which breaks when hosted under /imported/<id>/.
-  html = html.replace(/(["'])\/assets\//g, "$1./assets/");
-
-  if (await exists(path.join(previewPath, "favicon.svg"))) {
-    html = html.replace(/(["'])\/favicon\.svg(["'])/g, "$1./favicon.svg$2");
-  }
-  if (await exists(path.join(previewPath, "icons.svg"))) {
-    html = html.replace(/(["'])\/icons\.svg(["'])/g, "$1./icons.svg$2");
-  }
+  // Replace all root-relative paths (/_next/, /assets/, /favicon.ico, etc.) 
+  // with relative paths (./_next/, ./assets/, ./favicon.ico, etc.)
+  // to work correctly when hosted under /imported/<id>/
+  // Matches: ["|']/<word-char> and replaces with ["|']./<word-char>
+  html = html.replace(/(['"])\/([a-zA-Z_-])/g, "$1./$2");
 
   await writeFile(indexPath, html, "utf8");
 }
@@ -456,14 +736,31 @@ async function removeTranspilePackage(packageName: string): Promise<void> {
   });
 }
 
-async function scaffoldFeaturePackage(record: ImportedRepoRecord): Promise<{ packageName: string; routePath: string }> {
+async function scaffoldFeaturePackage(
+  record: ImportedRepoRecord,
+  transformLevel: NativeTransformLevel,
+): Promise<{
+  packageName: string;
+  routePath: string;
+  nativePlan: NativeScaffoldPlan;
+}> {
   const packageName = `features-${record.id}`;
   const packageDir = path.resolve(process.cwd(), "..", packageName);
   const routeSlug = `repo-${record.id}`;
   const routePath = `/${routeSlug}`;
   const featureTitle = toLabelCase(record.name);
   const pluginSymbol = `feature${toPascalCase(record.id)}Plugin`;
+  const sourceRepoPath = path.join(SOURCE_ROOT, record.id);
+  const nativePlan = await analyzeNativeScaffoldPlan(sourceRepoPath, transformLevel);
   await mkdir(path.join(packageDir, "src"), { recursive: true });
+
+  if (nativePlan.shouldUseNative) {
+    await copyDirectory(path.join(sourceRepoPath, "src"), path.join(packageDir, "src"));
+
+    if (nativePlan.routeFileRelativePath) {
+      await convertRouteFileToMemoryRouter(packageDir, nativePlan.routeFileRelativePath);
+    }
+  }
 
   const packageJson = {
     name: packageName,
@@ -474,15 +771,21 @@ async function scaffoldFeaturePackage(record: ImportedRepoRecord): Promise<{ pac
     exports: {
       ".": "./src/index.tsx",
     },
-    dependencies: {
-      react: "^19.2.3",
-      "react-dom": "^19.2.3",
-    },
-    devDependencies: {
-      "@types/react": "^19",
-      "@types/react-dom": "^19",
-      typescript: "^5",
-    },
+    dependencies: mergePackageMap(
+      {
+        react: "^19.2.3",
+        "react-dom": "^19.2.3",
+      },
+      nativePlan.shouldUseNative ? nativePlan.sourceManifest?.dependencies : undefined,
+    ),
+    devDependencies: mergePackageMap(
+      {
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        typescript: "^5",
+      },
+      nativePlan.shouldUseNative ? nativePlan.sourceManifest?.devDependencies : undefined,
+    ),
   };
 
   const tsconfig = {
@@ -498,18 +801,31 @@ async function scaffoldFeaturePackage(record: ImportedRepoRecord): Promise<{ pac
   const sourcePathLiteral = JSON.stringify(record.sourcePath);
   const titleLiteral = JSON.stringify(featureTitle);
   const readmeLiteral = JSON.stringify(record.readmeExcerpt);
+  const moduleLabelsLiteral = JSON.stringify(nativePlan.moduleLabels);
+  const nativeReasonLiteral = JSON.stringify(nativePlan.reason);
 
-  const featureRoot = `"use client";\n\nconst previewUrl: string | null = ${previewUrlLiteral};\nconst repoUrl = ${repoUrlLiteral};\nconst sourcePath = ${sourcePathLiteral};\nconst title = ${titleLiteral};\nconst readmeExcerpt: string | null = ${readmeLiteral};\n\nexport default function GeneratedFeatureRoot() {\n  return (\n    <div className=\"-m-6 flex h-[calc(100dvh-4.25rem)] min-h-[calc(100dvh-4.25rem)] w-[calc(100%+3rem)] flex-col bg-white\">\n      <main className=\"flex h-full min-h-0 w-full flex-1 flex-col\">\n        {previewUrl ? (\n          <div className=\"flex min-h-0 flex-1 overflow-hidden bg-white\">\n            <iframe\n              src={previewUrl}\n              title={title + " preview"}\n              style={{ width: \"100%\", height: \"100%\", border: 0, backgroundColor: \"#fff\" }}\n              loading=\"lazy\"\n              sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups\"\n            />\n          </div>\n        ) : (\n          <section className=\"h-full w-full overflow-auto bg-white p-4\">\n            <p className=\"text-sm text-slate-700\">\n              No static index.html preview was detected for this repository. You can still use its code from the local folder and adapt it to a native React feature package.\n            </p>\n            {readmeExcerpt ? (\n              <pre className=\"mt-3 max-h-80 overflow-auto rounded-xl bg-white/85 p-3 text-xs leading-6 text-slate-700\">\n                {readmeExcerpt}\n              </pre>\n            ) : null}\n          </section>\n        )}\n      </main>\n    </div>\n  );\n}\n`;
+  const generatedModulesSource = `export const detectedModules = ${moduleLabelsLiteral} as const;\nexport const nativeScaffoldReason = ${nativeReasonLiteral};\n`;
+
+  const appImportPath = nativePlan.appEntryImportPath ?? "./App";
+
+  const nativeFeatureRoot = `"use client";\n\nimport App from ${JSON.stringify(appImportPath)};\nimport { detectedModules, nativeScaffoldReason } from "./GeneratedFeatureModules";\n${nativePlan.hasAppProviders ? "import { AppProviders } from \"./app/providers\";\n" : ""}${nativePlan.hasGlobalStyles ? "import \"./styles/globals.css\";\n" : ""}export default function GeneratedFeatureRoot() {\n  const app = <App />;\n\n  return (\n    <div className=\"-m-6 min-h-[calc(100dvh-4.25rem)] p-6\">\n      <p className=\"mb-3 text-xs text-slate-600\">{nativeScaffoldReason}</p>\n      {detectedModules.length > 0 ? (\n        <div className=\"mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white/80 p-3 text-xs text-slate-700\">\n          <span className=\"font-semibold text-slate-900\">Detected modules:</span>\n          {detectedModules.map((moduleLabel) => (\n            <span key={moduleLabel} className=\"rounded-full border border-slate-300 bg-white px-2 py-1\">\n              {moduleLabel}\n            </span>\n          ))}\n        </div>\n      ) : null}\n      ${nativePlan.hasAppProviders ? "<AppProviders>{app}</AppProviders>" : "app"}\n    </div>\n  );\n}\n`;
+
+  const featureRoot = `"use client";\n\nconst previewUrl: string | null = ${previewUrlLiteral};\nconst repoUrl = ${repoUrlLiteral};\nconst sourcePath = ${sourcePathLiteral};\nconst title = ${titleLiteral};\nconst readmeExcerpt: string | null = ${readmeLiteral};\n\nexport default function GeneratedFeatureRoot() {\n  return (\n    <div className=\"-m-6 flex h-[calc(100dvh-4.25rem)] min-h-[calc(100dvh-4.25rem)] w-[calc(100%+3rem)] flex-col bg-white\">\n      <main className=\"flex h-full min-h-0 w-full flex-1 flex-col\">\n        {previewUrl ? (\n          <div className=\"flex min-h-0 flex-1 overflow-hidden bg-white\">\n            <iframe\n              src={previewUrl}\n              title={title + " preview"}\n              style={{ width: \"100%\", height: \"100%\", border: 0, backgroundColor: \"#fff\" }}\n              loading=\"lazy\"\n              sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads allow-presentation\"\n            />\n          </div>\n        ) : (\n          <section className=\"h-full w-full overflow-auto bg-white p-4\">\n            <p className=\"text-sm text-slate-700\">\n              No static index.html preview was detected for this repository. You can still use its code from the local folder and adapt it to a native React feature package.\n            </p>\n            {readmeExcerpt ? (\n              <pre className=\"mt-3 max-h-80 overflow-auto rounded-xl bg-white/85 p-3 text-xs leading-6 text-slate-700\">\n                {readmeExcerpt}\n              </pre>\n            ) : null}\n          </section>\n        )}\n      </main>\n    </div>\n  );\n}\n`;
 
   const indexSource = `import type { ToolboxPlugin } from "@toolbox/plugin-types";\nimport GeneratedFeatureRoot from "./GeneratedFeatureRoot";\n\nconst ${pluginSymbol}: ToolboxPlugin = {\n  id: ${JSON.stringify(`imported-${record.id}`)},\n  name: ${titleLiteral},\n  version: "0.1.0",\n  routes: [\n    {\n      path: ${JSON.stringify(`${routePath}/*`)},\n      element: <GeneratedFeatureRoot />,\n    },\n  ],\n  menu: [\n    {\n      label: ${titleLiteral},\n      to: ${JSON.stringify(routePath)},\n      icon: "Repo",\n    },\n  ],\n};\n\nexport default ${pluginSymbol};\n`;
 
   await writeFile(path.join(packageDir, "package.json"), JSON.stringify(packageJson, null, 2), "utf8");
   await writeFile(path.join(packageDir, "tsconfig.json"), JSON.stringify(tsconfig, null, 2), "utf8");
-  await writeFile(path.join(packageDir, "src", "GeneratedFeatureRoot.tsx"), featureRoot, "utf8");
+  await writeFile(path.join(packageDir, "src", "GeneratedFeatureModules.ts"), generatedModulesSource, "utf8");
+  await writeFile(
+    path.join(packageDir, "src", "GeneratedFeatureRoot.tsx"),
+    nativePlan.shouldUseNative ? nativeFeatureRoot : featureRoot,
+    "utf8",
+  );
   await writeFile(path.join(packageDir, "src", "index.tsx"), indexSource, "utf8");
 
   await registerGeneratedPlugin(packageName, pluginSymbol);
-  return { packageName, routePath };
+  return { packageName, routePath, nativePlan };
 }
 
 export async function importRepository(repoUrl: string): Promise<ImportedRepoRecord> {
@@ -572,7 +888,10 @@ export async function importRepository(repoUrl: string): Promise<ImportedRepoRec
   }
 }
 
-export async function activateImportedRepository(repoId: string): Promise<ImportedRepoRecord> {
+export async function activateImportedRepository(
+  repoId: string,
+  requestedTransformLevel?: string,
+): Promise<ImportedRepoRecord> {
   const records = await loadImportedRepos();
   const repo = records.find((record) => record.id === sanitizeSegment(repoId));
   if (!repo) {
@@ -583,13 +902,19 @@ export async function activateImportedRepository(repoId: string): Promise<Import
     throw new Error(`Repository already activated as ${repo.activatedFeaturePackage}.`);
   }
 
-  const { packageName, routePath } = await scaffoldFeaturePackage(repo);
+  const transformLevel = normalizeNativeTransformLevel(requestedTransformLevel);
+  const { packageName, routePath, nativePlan } = await scaffoldFeaturePackage(repo, transformLevel);
 
   const updatedRepo: ImportedRepoRecord = {
     ...repo,
     activatedFeaturePackage: packageName,
     activatedRoute: routePath,
     activatedAt: new Date().toISOString(),
+    nativeTransformLevel: transformLevel,
+    nativeScaffoldMode: nativePlan.shouldUseNative ? "native" : "iframe",
+    nativeScaffoldReason: nativePlan.reason,
+    nativeRiskScore: nativePlan.riskScore,
+    nativeRiskBand: nativePlan.riskBand,
   };
 
   const nextRecords = records.map((record) => (record.id === repo.id ? updatedRepo : record));

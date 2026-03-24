@@ -8,14 +8,13 @@ __turbopack_context__.s([
     "RepoImporterRoot",
     ()=>RepoImporterRoot
 ]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$build$2f$polyfills$2f$process$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = /*#__PURE__*/ __turbopack_context__.i("[project]/node_modules/next/dist/build/polyfills/process.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/jsx-dev-runtime.js [app-client] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$compiler$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/compiler-runtime.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$router$2f$dist$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/react-router/dist/index.js [app-client] (ecmascript) <locals>");
 ;
 var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature(), _s2 = __turbopack_context__.k.signature();
 "use client";
-;
 ;
 ;
 function formatDate(value) {
@@ -24,6 +23,15 @@ function formatDate(value) {
         return value;
     }
     return date.toLocaleString();
+}
+function logImportDebug(event, payload) {
+    if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
+    ;
+    if (payload) {
+        console.log(`[RepoImportDebug] ${event}`, payload);
+        return;
+    }
+    console.log(`[RepoImportDebug] ${event}`);
 }
 function useImportedRepos() {
     _s();
@@ -35,7 +43,11 @@ function useImportedRepos() {
             setLoading(true);
             setError(null);
             const response = await fetch("/api/repo-import", {
-                method: "GET"
+                method: "GET",
+                cache: "no-store",
+                headers: {
+                    "Cache-Control": "no-cache"
+                }
             });
             const data = await response.json();
             if (!response.ok) {
@@ -67,7 +79,9 @@ function RepoImporterRoot() {
     const { repos, loading, error, refresh } = useImportedRepos();
     const [repoUrl, setRepoUrl] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
     const [importing, setImporting] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [transformLevel, setTransformLevel] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("balanced");
     const [activatingRepoId, setActivatingRepoId] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [deletingRepoId, setDeletingRepoId] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [status, setStatus] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [submitError, setSubmitError] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const handleImport = async (event)=>{
@@ -114,19 +128,72 @@ function RepoImporterRoot() {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    repoId
+                    repoId,
+                    transformLevel
                 })
             });
             const data_0 = await response_0.json();
             if (!response_0.ok) {
                 throw new Error(data_0.error || "Feature activation failed.");
             }
-            setStatus(`Activated ${data_0.activated?.name ?? repoId} as ${data_0.activated?.activatedFeaturePackage ?? "feature package"}. Restart dev server to load it.`);
+            setStatus(`Activated ${data_0.activated?.name ?? repoId} as ${data_0.activated?.activatedFeaturePackage ?? "feature package"} using ${transformLevel} mode. Restart dev server to load it.`);
             await refresh();
+            if (data_0.activated?.activatedRoute) {
+                navigate(data_0.activated.activatedRoute);
+            }
         } catch (activationError) {
+            try {
+                const fallbackResponse = await fetch("/api/repo-import", {
+                    method: "GET",
+                    cache: "no-store",
+                    headers: {
+                        "Cache-Control": "no-cache"
+                    }
+                });
+                const fallbackData = await fallbackResponse.json();
+                const activatedRepo = fallbackData.repos?.find((repo)=>repo.id === repoId && repo.activatedRoute);
+                if (activatedRepo?.activatedRoute) {
+                    setStatus(`Activated ${activatedRepo.name}. Opening native feature...`);
+                    await refresh();
+                    navigate(activatedRepo.activatedRoute);
+                    return;
+                }
+            } catch  {
+            // Fallback check is best-effort only.
+            }
             setSubmitError(activationError instanceof Error ? activationError.message : "Feature activation failed.");
         } finally{
             setActivatingRepoId(null);
+        }
+    };
+    const handleDelete = async (repo_0)=>{
+        const confirmed = window.confirm(`Delete ${repo_0.name}? This removes downloaded files and generated feature package (if activated).`);
+        if (!confirmed) {
+            return;
+        }
+        setStatus(null);
+        setSubmitError(null);
+        try {
+            setDeletingRepoId(repo_0.id);
+            const response_1 = await fetch("/api/repo-import", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    repoId: repo_0.id
+                })
+            });
+            const data_1 = await response_1.json();
+            if (!response_1.ok) {
+                throw new Error(data_1.error || "Delete failed.");
+            }
+            setStatus(`Deleted ${data_1.deleted?.deletedId ?? repo_0.id}.`);
+            await refresh();
+        } catch (deleteError) {
+            setSubmitError(deleteError instanceof Error ? deleteError.message : "Delete failed.");
+        } finally{
+            setDeletingRepoId(null);
         }
     };
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -142,7 +209,7 @@ function RepoImporterRoot() {
                             children: "REPOSITORY IMPORT WIZARD"
                         }, void 0, false, {
                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                            lineNumber: 142,
+                            lineNumber: 222,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -150,7 +217,7 @@ function RepoImporterRoot() {
                             children: "Import A New Project"
                         }, void 0, false, {
                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                            lineNumber: 145,
+                            lineNumber: 225,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -158,13 +225,13 @@ function RepoImporterRoot() {
                             children: "Paste a GitHub repository URL. Toolbox will clone it into your local workspace under packages/imported-repos and create a new in-app page."
                         }, void 0, false, {
                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                            lineNumber: 146,
+                            lineNumber: 226,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                    lineNumber: 141,
+                    lineNumber: 221,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -180,7 +247,7 @@ function RepoImporterRoot() {
                                     children: "GitHub Repository URL"
                                 }, void 0, false, {
                                     fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                    lineNumber: 153,
+                                    lineNumber: 233,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -191,12 +258,57 @@ function RepoImporterRoot() {
                                     className: "h-12 w-full rounded-xl border-2 border-emerald-200 bg-white/90 px-3 text-sm outline-none transition focus:border-emerald-500"
                                 }, void 0, false, {
                                     fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                    lineNumber: 156,
+                                    lineNumber: 236,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "flex flex-wrap items-center gap-2",
                                     children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                            className: "text-xs font-semibold text-slate-700",
+                                            htmlFor: "transform-level",
+                                            children: "Native Transform Level"
+                                        }, void 0, false, {
+                                            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                                            lineNumber: 238,
+                                            columnNumber: 15
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
+                                            id: "transform-level",
+                                            value: transformLevel,
+                                            onChange: (event_1)=>setTransformLevel(event_1.target.value),
+                                            className: "h-11 rounded-xl border-2 border-slate-300 bg-white/90 px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-emerald-500",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                    value: "safe",
+                                                    children: "safe (low risk only)"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                                                    lineNumber: 242,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                    value: "balanced",
+                                                    children: "balanced (recommended)"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                                                    lineNumber: 243,
+                                                    columnNumber: 17
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                    value: "strict",
+                                                    children: "strict (prefer native)"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                                                    lineNumber: 244,
+                                                    columnNumber: 17
+                                                }, this)
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                                            lineNumber: 241,
+                                            columnNumber: 15
+                                        }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                             type: "submit",
                                             disabled: importing,
@@ -204,7 +316,7 @@ function RepoImporterRoot() {
                                             children: importing ? "Importing..." : "Import Repository"
                                         }, void 0, false, {
                                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                            lineNumber: 158,
+                                            lineNumber: 246,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -212,19 +324,19 @@ function RepoImporterRoot() {
                                             children: "Requires Git installed on this machine."
                                         }, void 0, false, {
                                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                            lineNumber: 161,
+                                            lineNumber: 249,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                    lineNumber: 157,
+                                    lineNumber: 237,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                            lineNumber: 152,
+                            lineNumber: 232,
                             columnNumber: 11
                         }, this),
                         status ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -232,7 +344,7 @@ function RepoImporterRoot() {
                             children: status
                         }, void 0, false, {
                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                            lineNumber: 165,
+                            lineNumber: 253,
                             columnNumber: 21
                         }, this) : null,
                         submitError ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -240,7 +352,7 @@ function RepoImporterRoot() {
                             children: submitError
                         }, void 0, false, {
                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                            lineNumber: 166,
+                            lineNumber: 254,
                             columnNumber: 26
                         }, this) : null,
                         error ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -248,13 +360,13 @@ function RepoImporterRoot() {
                             children: error
                         }, void 0, false, {
                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                            lineNumber: 167,
+                            lineNumber: 255,
                             columnNumber: 20
                         }, this) : null
                     ]
                 }, void 0, true, {
                     fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                    lineNumber: 151,
+                    lineNumber: 231,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -265,7 +377,7 @@ function RepoImporterRoot() {
                             children: "Imported Projects"
                         }, void 0, false, {
                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                            lineNumber: 171,
+                            lineNumber: 259,
                             columnNumber: 11
                         }, this),
                         loading ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -273,7 +385,7 @@ function RepoImporterRoot() {
                             children: "Loading imported repositories..."
                         }, void 0, false, {
                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                            lineNumber: 173,
+                            lineNumber: 261,
                             columnNumber: 22
                         }, this) : null,
                         !loading && repos.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -281,144 +393,179 @@ function RepoImporterRoot() {
                             children: "No repositories imported yet."
                         }, void 0, false, {
                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                            lineNumber: 175,
+                            lineNumber: 263,
                             columnNumber: 45
                         }, this) : null,
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "grid gap-3 md:grid-cols-2",
-                            children: repos.map((repo)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("article", {
+                            children: repos.map((repo_1)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("article", {
                                     className: "glass-card rounded-2xl p-4",
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                             className: "text-xs font-semibold tracking-wider text-slate-500",
-                                            children: repo.owner
+                                            children: repo_1.owner
                                         }, void 0, false, {
                                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                            lineNumber: 181,
+                                            lineNumber: 269,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
                                             className: "mt-1 text-lg font-semibold text-slate-900",
-                                            children: repo.name
+                                            children: repo_1.name
                                         }, void 0, false, {
                                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                            lineNumber: 182,
+                                            lineNumber: 270,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                             className: "mt-1 text-xs text-slate-600",
                                             children: [
                                                 "Imported: ",
-                                                formatDate(repo.importedAt)
+                                                formatDate(repo_1.importedAt)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                            lineNumber: 183,
+                                            lineNumber: 271,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                             className: "mt-2 text-xs text-slate-600",
                                             children: [
                                                 "Stored at: ",
-                                                repo.sourcePath
+                                                repo_1.sourcePath
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                            lineNumber: 184,
+                                            lineNumber: 272,
                                             columnNumber: 17
                                         }, this),
-                                        repo.activatedFeaturePackage ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        repo_1.activatedFeaturePackage ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                             className: "mt-1 text-xs font-semibold text-emerald-700",
                                             children: [
                                                 "Active native feature: ",
-                                                repo.activatedFeaturePackage
+                                                repo_1.activatedFeaturePackage
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                            lineNumber: 185,
-                                            columnNumber: 49
+                                            lineNumber: 273,
+                                            columnNumber: 51
+                                        }, this) : null,
+                                        repo_1.nativeScaffoldMode ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                            className: "mt-1 text-xs text-slate-700",
+                                            children: [
+                                                "Scaffold mode: ",
+                                                repo_1.nativeScaffoldMode,
+                                                " (",
+                                                repo_1.nativeTransformLevel ?? "balanced",
+                                                ")",
+                                                repo_1.nativeRiskBand ? ` • risk ${repo_1.nativeRiskBand}` : "",
+                                                typeof repo_1.nativeRiskScore === "number" ? ` (${repo_1.nativeRiskScore})` : ""
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                                            lineNumber: 276,
+                                            columnNumber: 46
+                                        }, this) : null,
+                                        repo_1.nativeScaffoldReason ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                            className: "mt-1 text-xs text-slate-600",
+                                            children: repo_1.nativeScaffoldReason
+                                        }, void 0, false, {
+                                            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                                            lineNumber: 281,
+                                            columnNumber: 48
                                         }, this) : null,
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                             className: "mt-3 flex flex-wrap gap-2",
                                             children: [
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                                     type: "button",
-                                                    onClick: ()=>navigate(`/imported/${repo.id}`),
+                                                    onClick: ()=>navigate(`/imported/${repo_1.id}`),
                                                     className: "rounded-lg border-2 border-emerald-300 bg-white/90 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50",
                                                     children: "Open Page"
                                                 }, void 0, false, {
                                                     fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                                    lineNumber: 190,
+                                                    lineNumber: 284,
                                                     columnNumber: 19
                                                 }, this),
-                                                repo.previewUrl ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
-                                                    href: repo.previewUrl,
+                                                repo_1.previewUrl ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
+                                                    href: repo_1.previewUrl,
                                                     target: "_blank",
                                                     rel: "noreferrer",
                                                     className: "rounded-lg border-2 border-slate-300 bg-white/90 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100",
                                                     children: "Open Static Preview"
                                                 }, void 0, false, {
                                                     fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                                    lineNumber: 193,
-                                                    columnNumber: 38
+                                                    lineNumber: 287,
+                                                    columnNumber: 40
                                                 }, this) : null,
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                                     type: "button",
-                                                    disabled: Boolean(repo.activatedFeaturePackage) || activatingRepoId === repo.id,
-                                                    onClick: ()=>handleActivate(repo.id),
+                                                    disabled: Boolean(repo_1.activatedFeaturePackage) || activatingRepoId === repo_1.id,
+                                                    onClick: ()=>handleActivate(repo_1.id),
                                                     className: "rounded-lg border-2 border-emerald-500 bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60",
-                                                    children: repo.activatedFeaturePackage ? "Native Feature Ready" : activatingRepoId === repo.id ? "Activating..." : "Activate As Native Feature"
+                                                    children: repo_1.activatedFeaturePackage ? "Native Feature Ready" : activatingRepoId === repo_1.id ? "Activating..." : "Activate As Native Feature"
                                                 }, void 0, false, {
                                                     fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                                    lineNumber: 196,
+                                                    lineNumber: 290,
                                                     columnNumber: 19
                                                 }, this),
-                                                repo.activatedRoute ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                repo_1.activatedRoute ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                                     type: "button",
-                                                    onClick: ()=>navigate(repo.activatedRoute),
+                                                    onClick: ()=>navigate(repo_1.activatedRoute),
                                                     className: "rounded-lg border-2 border-slate-300 bg-white/90 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100",
                                                     children: "Open Native Feature"
                                                 }, void 0, false, {
                                                     fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                                    lineNumber: 199,
-                                                    columnNumber: 42
-                                                }, this) : null
+                                                    lineNumber: 293,
+                                                    columnNumber: 44
+                                                }, this) : null,
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                    type: "button",
+                                                    disabled: deletingRepoId === repo_1.id,
+                                                    onClick: ()=>handleDelete(repo_1),
+                                                    className: "rounded-lg border-2 border-rose-300 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60",
+                                                    children: deletingRepoId === repo_1.id ? "Deleting..." : "Delete"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                                                    lineNumber: 296,
+                                                    columnNumber: 19
+                                                }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                            lineNumber: 189,
+                                            lineNumber: 283,
                                             columnNumber: 17
                                         }, this)
                                     ]
-                                }, repo.id, true, {
+                                }, repo_1.id, true, {
                                     fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                                    lineNumber: 180,
-                                    columnNumber: 32
+                                    lineNumber: 268,
+                                    columnNumber: 34
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                            lineNumber: 179,
+                            lineNumber: 267,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                    lineNumber: 170,
+                    lineNumber: 258,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-            lineNumber: 140,
+            lineNumber: 220,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-        lineNumber: 139,
+        lineNumber: 219,
         columnNumber: 10
     }, this);
 }
-_s1(RepoImporterRoot, "e2ASfSNh9dEgRNv2D1tChpQrMLc=", false, function() {
+_s1(RepoImporterRoot, "A4NaN7gfz89Uz2+atwPvAh4+s+c=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$router$2f$dist$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["useNavigate"],
         useImportedRepos
@@ -427,390 +574,381 @@ _s1(RepoImporterRoot, "e2ASfSNh9dEgRNv2D1tChpQrMLc=", false, function() {
 _c = RepoImporterRoot;
 function ImportedRepoViewer() {
     _s2();
-    const $ = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$compiler$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["c"])(43);
-    if ($[0] !== "43e20cb6b42cc7667f3071a984cd68fb3ce688aa752ce3bb144c9f780e9da568") {
-        for(let $i = 0; $i < 43; $i += 1){
-            $[$i] = Symbol.for("react.memo_cache_sentinel");
-        }
-        $[0] = "43e20cb6b42cc7667f3071a984cd68fb3ce688aa752ce3bb144c9f780e9da568";
-    }
     const { repoId } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$router$2f$dist$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["useParams"])();
     const navigate = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$router$2f$dist$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["useNavigate"])();
     const { repos, loading, error } = useImportedRepos();
-    let t0;
-    if ($[1] !== repoId || $[2] !== repos) {
-        let t1;
-        if ($[4] !== repoId) {
-            t1 = ({
-                "ImportedRepoViewer[repos.find()]": (item)=>item.id === repoId
-            })["ImportedRepoViewer[repos.find()]"];
-            $[4] = repoId;
-            $[5] = t1;
-        } else {
-            t1 = $[5];
+    const iframeRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
+    const [embedState, setEmbedState] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("loading");
+    const repo = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
+        "ImportedRepoViewer.useMemo[repo]": ()=>repos.find({
+                "ImportedRepoViewer.useMemo[repo]": (item)=>item.id === repoId
+            }["ImportedRepoViewer.useMemo[repo]"])
+    }["ImportedRepoViewer.useMemo[repo]"], [
+        repos,
+        repoId
+    ]);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "ImportedRepoViewer.useEffect": ()=>{
+            if (!repo?.previewUrl) {
+                setEmbedState("failed");
+                return;
+            }
+            setEmbedState("loading");
+            const timeout = window.setTimeout({
+                "ImportedRepoViewer.useEffect.timeout": ()=>{
+                    setEmbedState("failed");
+                }
+            }["ImportedRepoViewer.useEffect.timeout"], 8000);
+            return ({
+                "ImportedRepoViewer.useEffect": ()=>{
+                    window.clearTimeout(timeout);
+                }
+            })["ImportedRepoViewer.useEffect"];
         }
-        t0 = repos.find(t1);
-        $[1] = repoId;
-        $[2] = repos;
-        $[3] = t0;
-    } else {
-        t0 = $[3];
-    }
-    const repo = t0;
+    }["ImportedRepoViewer.useEffect"], [
+        repo?.id,
+        repo?.previewUrl
+    ]);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "ImportedRepoViewer.useEffect": ()=>{
+            logImportDebug("ImportedRepoViewer render", {
+                repoId,
+                loading,
+                hasError: Boolean(error),
+                hasRepo: Boolean(repo),
+                previewUrl: repo?.previewUrl ?? null,
+                embedState
+            });
+        }
+    }["ImportedRepoViewer.useEffect"], [
+        repoId,
+        loading,
+        error,
+        repo,
+        embedState
+    ]);
+    const handleFrameLoad = ()=>{
+        logImportDebug("ImportedRepoViewer iframe load", {
+            repoId,
+            previewUrl: repo?.previewUrl ?? null
+        });
+        window.setTimeout(()=>{
+            const frame = iframeRef.current;
+            if (!frame) {
+                logImportDebug("ImportedRepoViewer iframe missing ref", {
+                    repoId
+                });
+                setEmbedState("failed");
+                return;
+            }
+            try {
+                const doc = frame.contentDocument;
+                const body = doc?.body;
+                const root = body?.querySelector("#root, #app, #__next");
+                const textLength = body?.textContent?.replace(/\s+/g, "").length ?? 0;
+                const rootChildCount = root?.childElementCount ?? 0;
+                const bodyChildCount = body?.childElementCount ?? 0;
+                logImportDebug("ImportedRepoViewer iframe DOM stats", {
+                    repoId,
+                    frameUrl: frame.src,
+                    textLength,
+                    rootChildCount,
+                    bodyChildCount
+                });
+                if (textLength === 0 && rootChildCount === 0 && bodyChildCount <= 1) {
+                    logImportDebug("ImportedRepoViewer iframe appears blank", {
+                        repoId,
+                        frameUrl: frame.src
+                    });
+                    setEmbedState("failed");
+                    return;
+                }
+            } catch (inspectError) {
+                // If browser blocks frame inspection, still keep embedded view available.
+                logImportDebug("ImportedRepoViewer iframe inspection blocked", {
+                    repoId,
+                    message: inspectError instanceof Error ? inspectError.message : String(inspectError)
+                });
+            }
+            logImportDebug("ImportedRepoViewer iframe marked ready", {
+                repoId
+            });
+            setEmbedState("ready");
+        }, 600);
+    };
     if (loading) {
-        let t1;
-        if ($[6] === Symbol.for("react.memo_cache_sentinel")) {
-            t1 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                style: {
-                    padding: "2rem"
-                },
-                children: "Loading imported project..."
-            }, void 0, false, {
-                fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                lineNumber: 249,
-                columnNumber: 12
-            }, this);
-            $[6] = t1;
-        } else {
-            t1 = $[6];
-        }
-        return t1;
+        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            style: {
+                padding: "2rem"
+            },
+            children: "Loading imported project..."
+        }, void 0, false, {
+            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+            lineNumber: 392,
+            columnNumber: 12
+        }, this);
     }
     if (error) {
-        let t1;
-        if ($[7] === Symbol.for("react.memo_cache_sentinel")) {
-            t1 = {
+        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            style: {
                 color: "#b91c1c",
                 padding: "2rem"
-            };
-            $[7] = t1;
-        } else {
-            t1 = $[7];
-        }
-        let t2;
-        if ($[8] !== error) {
-            t2 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                style: t1,
-                children: [
-                    "Error: ",
-                    error
-                ]
-            }, void 0, true, {
-                fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                lineNumber: 271,
-                columnNumber: 12
-            }, this);
-            $[8] = error;
-            $[9] = t2;
-        } else {
-            t2 = $[9];
-        }
-        return t2;
+            },
+            children: [
+                "Error: ",
+                error
+            ]
+        }, void 0, true, {
+            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+            lineNumber: 397,
+            columnNumber: 12
+        }, this);
     }
     if (!repo) {
-        let t1;
-        if ($[10] === Symbol.for("react.memo_cache_sentinel")) {
-            t1 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
-                className: "text-xl font-semibold text-slate-900",
-                children: "Imported project not found."
-            }, void 0, false, {
-                fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                lineNumber: 282,
-                columnNumber: 12
-            }, this);
-            $[10] = t1;
-        } else {
-            t1 = $[10];
-        }
-        let t2;
-        if ($[11] !== navigate) {
-            t2 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "playful-bg min-h-dvh px-4 py-8",
-                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                    className: "mx-auto w-full max-w-4xl rounded-2xl bg-white/85 p-6",
-                    children: [
-                        t1,
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                            type: "button",
-                            onClick: {
-                                "ImportedRepoViewer[<button>.onClick]": ()=>navigate("/import")
-                            }["ImportedRepoViewer[<button>.onClick]"],
-                            className: "mt-3 rounded-lg border-2 border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-700",
-                            children: "Back To Import Wizard"
-                        }, void 0, false, {
-                            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                            lineNumber: 289,
-                            columnNumber: 134
-                        }, this)
-                    ]
-                }, void 0, true, {
-                    fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                    lineNumber: 289,
-                    columnNumber: 60
-                }, this)
-            }, void 0, false, {
-                fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                lineNumber: 289,
-                columnNumber: 12
-            }, this);
-            $[11] = navigate;
-            $[12] = t2;
-        } else {
-            t2 = $[12];
-        }
-        return t2;
-    }
-    if (!repo.previewUrl) {
-        let t1;
-        if ($[13] !== repo.name) {
-            t1 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
-                className: "text-xl font-semibold text-slate-900",
-                children: repo.name
-            }, void 0, false, {
-                fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                lineNumber: 302,
-                columnNumber: 12
-            }, this);
-            $[13] = repo.name;
-            $[14] = t1;
-        } else {
-            t1 = $[14];
-        }
-        let t2;
-        if ($[15] !== repo.sourcePath) {
-            t2 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                className: "mt-2 text-sm text-slate-700",
+        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "playful-bg min-h-dvh px-4 py-8",
+            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "mx-auto w-full max-w-4xl rounded-2xl bg-white/85 p-6",
                 children: [
-                    "This repository was downloaded to ",
-                    repo.sourcePath,
-                    ", but no static index.html preview was detected."
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                        className: "text-xl font-semibold text-slate-900",
+                        children: "Imported project not found."
+                    }, void 0, false, {
+                        fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                        lineNumber: 405,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        type: "button",
+                        onClick: ()=>navigate("/import"),
+                        className: "mt-3 rounded-lg border-2 border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-700",
+                        children: "Back To Import Wizard"
+                    }, void 0, false, {
+                        fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                        lineNumber: 406,
+                        columnNumber: 11
+                    }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                lineNumber: 310,
-                columnNumber: 12
-            }, this);
-            $[15] = repo.sourcePath;
-            $[16] = t2;
-        } else {
-            t2 = $[16];
-        }
-        let t3;
-        if ($[17] === Symbol.for("react.memo_cache_sentinel")) {
-            t3 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                className: "mt-2 text-sm text-slate-700",
-                children: "You can still use the code locally from that folder and wire it into a Toolbox feature package."
-            }, void 0, false, {
-                fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                lineNumber: 318,
-                columnNumber: 12
-            }, this);
-            $[17] = t3;
-        } else {
-            t3 = $[17];
-        }
-        let t4;
-        if ($[18] !== navigate) {
-            t4 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                type: "button",
-                onClick: {
-                    "ImportedRepoViewer[<button>.onClick]": ()=>navigate("/import")
-                }["ImportedRepoViewer[<button>.onClick]"],
-                className: "mt-3 rounded-lg border-2 border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-700",
-                children: "Back To Import Wizard"
-            }, void 0, false, {
-                fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                lineNumber: 325,
-                columnNumber: 12
-            }, this);
-            $[18] = navigate;
-            $[19] = t4;
-        } else {
-            t4 = $[19];
-        }
-        let t5;
-        if ($[20] !== t1 || $[21] !== t2 || $[22] !== t4) {
-            t5 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "playful-bg min-h-dvh px-4 py-8",
-                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                    className: "mx-auto w-full max-w-4xl rounded-2xl bg-white/85 p-6",
-                    children: [
-                        t1,
-                        t2,
-                        t3,
-                        t4
-                    ]
-                }, void 0, true, {
-                    fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                    lineNumber: 335,
-                    columnNumber: 60
-                }, this)
-            }, void 0, false, {
-                fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                lineNumber: 335,
-                columnNumber: 12
-            }, this);
-            $[20] = t1;
-            $[21] = t2;
-            $[22] = t4;
-            $[23] = t5;
-        } else {
-            t5 = $[23];
-        }
-        return t5;
-    }
-    let t1;
-    if ($[24] !== repo.name) {
-        t1 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
-            className: "text-lg font-semibold text-slate-900",
-            children: repo.name
-        }, void 0, false, {
-            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-            lineNumber: 347,
-            columnNumber: 10
-        }, this);
-        $[24] = repo.name;
-        $[25] = t1;
-    } else {
-        t1 = $[25];
-    }
-    let t2;
-    if ($[26] !== repo.repoUrl) {
-        t2 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-            className: "text-xs text-slate-600",
-            children: repo.repoUrl
-        }, void 0, false, {
-            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-            lineNumber: 355,
-            columnNumber: 10
-        }, this);
-        $[26] = repo.repoUrl;
-        $[27] = t2;
-    } else {
-        t2 = $[27];
-    }
-    let t3;
-    if ($[28] !== t1 || $[29] !== t2) {
-        t3 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            children: [
-                t1,
-                t2
-            ]
-        }, void 0, true, {
-            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-            lineNumber: 363,
-            columnNumber: 10
-        }, this);
-        $[28] = t1;
-        $[29] = t2;
-        $[30] = t3;
-    } else {
-        t3 = $[30];
-    }
-    let t4;
-    if ($[31] !== navigate) {
-        t4 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-            type: "button",
-            onClick: {
-                "ImportedRepoViewer[<button>.onClick]": ()=>navigate("/import")
-            }["ImportedRepoViewer[<button>.onClick]"],
-            className: "rounded-lg border-2 border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-700",
-            children: "Back To Import Wizard"
-        }, void 0, false, {
-            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-            lineNumber: 372,
-            columnNumber: 10
-        }, this);
-        $[31] = navigate;
-        $[32] = t4;
-    } else {
-        t4 = $[32];
-    }
-    let t5;
-    if ($[33] !== t3 || $[34] !== t4) {
-        t5 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            className: "glass-card flex flex-wrap items-center justify-between gap-2 rounded-2xl p-3",
-            children: [
-                t3,
-                t4
-            ]
-        }, void 0, true, {
-            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-            lineNumber: 382,
-            columnNumber: 10
-        }, this);
-        $[33] = t3;
-        $[34] = t4;
-        $[35] = t5;
-    } else {
-        t5 = $[35];
-    }
-    const t6 = `${repo.name} preview`;
-    let t7;
-    if ($[36] === Symbol.for("react.memo_cache_sentinel")) {
-        t7 = {
-            width: "100%",
-            height: "80vh",
-            border: 0,
-            backgroundColor: "#fff"
-        };
-        $[36] = t7;
-    } else {
-        t7 = $[36];
-    }
-    let t8;
-    if ($[37] !== repo.previewUrl || $[38] !== t6) {
-        t8 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            className: "glass-card overflow-hidden rounded-2xl border border-emerald-100",
-            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("iframe", {
-                src: repo.previewUrl,
-                title: t6,
-                style: t7
-            }, void 0, false, {
-                fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
                 lineNumber: 404,
-                columnNumber: 92
+                columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-            lineNumber: 404,
-            columnNumber: 10
+            lineNumber: 403,
+            columnNumber: 12
         }, this);
-        $[37] = repo.previewUrl;
-        $[38] = t6;
-        $[39] = t8;
-    } else {
-        t8 = $[39];
     }
-    let t9;
-    if ($[40] !== t5 || $[41] !== t8) {
-        t9 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            className: "playful-bg min-h-dvh px-4 py-4 md:px-6",
+    if (!repo.previewUrl) {
+        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "playful-bg min-h-dvh px-4 py-8",
             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                className: "mx-auto flex w-full max-w-7xl flex-col gap-3",
+                className: "mx-auto w-full max-w-4xl rounded-2xl bg-white/85 p-6",
                 children: [
-                    t5,
-                    t8
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                        className: "text-xl font-semibold text-slate-900",
+                        children: repo.name
+                    }, void 0, false, {
+                        fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                        lineNumber: 415,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: "mt-2 text-sm text-slate-700",
+                        children: [
+                            "This repository was downloaded to ",
+                            repo.sourcePath,
+                            ", but no static index.html preview was detected."
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                        lineNumber: 416,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        className: "mt-2 text-sm text-slate-700",
+                        children: "You can still use the code locally from that folder and wire it into a Toolbox feature package."
+                    }, void 0, false, {
+                        fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                        lineNumber: 419,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        type: "button",
+                        onClick: ()=>navigate("/import"),
+                        className: "mt-3 rounded-lg border-2 border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-700",
+                        children: "Back To Import Wizard"
+                    }, void 0, false, {
+                        fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                        lineNumber: 422,
+                        columnNumber: 11
+                    }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
-                lineNumber: 413,
-                columnNumber: 66
+                lineNumber: 414,
+                columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
             lineNumber: 413,
-            columnNumber: 10
+            columnNumber: 12
         }, this);
-        $[40] = t5;
-        $[41] = t8;
-        $[42] = t9;
-    } else {
-        t9 = $[42];
     }
-    return t9;
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+        className: "playful-bg min-h-dvh px-4 py-4 md:px-6",
+        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "mx-auto flex w-full max-w-7xl flex-col gap-3",
+            children: [
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "glass-card flex flex-wrap items-center justify-between gap-2 rounded-2xl p-3",
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                                    className: "text-lg font-semibold text-slate-900",
+                                    children: repo.name
+                                }, void 0, false, {
+                                    fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                                    lineNumber: 432,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                    className: "text-xs text-slate-600",
+                                    children: repo.repoUrl
+                                }, void 0, false, {
+                                    fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                                    lineNumber: 433,
+                                    columnNumber: 13
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                            lineNumber: 431,
+                            columnNumber: 11
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "flex flex-wrap items-center gap-2",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
+                                    href: repo.previewUrl,
+                                    target: "_blank",
+                                    rel: "noreferrer",
+                                    className: "rounded-lg border-2 border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-700",
+                                    children: "Open Static Preview"
+                                }, void 0, false, {
+                                    fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                                    lineNumber: 436,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                    type: "button",
+                                    onClick: ()=>navigate("/import"),
+                                    className: "rounded-lg border-2 border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-700",
+                                    children: "Back To Import Wizard"
+                                }, void 0, false, {
+                                    fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                                    lineNumber: 439,
+                                    columnNumber: 13
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                            lineNumber: 435,
+                            columnNumber: 11
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                    lineNumber: 430,
+                    columnNumber: 9
+                }, this),
+                embedState === "failed" ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
+                    className: "glass-card rounded-2xl border border-emerald-100 p-5",
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
+                            className: "text-base font-semibold text-slate-900",
+                            children: "Embedded preview could not be rendered."
+                        }, void 0, false, {
+                            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                            lineNumber: 446,
+                            columnNumber: 13
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                            className: "mt-2 text-sm text-slate-700",
+                            children: "This repository may require a build step or block iframe embedding. Use Open Static Preview to open it directly."
+                        }, void 0, false, {
+                            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                            lineNumber: 447,
+                            columnNumber: 13
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "mt-3",
+                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
+                                href: repo.previewUrl,
+                                target: "_blank",
+                                rel: "noreferrer",
+                                className: "inline-flex rounded-lg border-2 border-emerald-500 bg-emerald-600 px-3 py-2 text-xs font-semibold text-white",
+                                children: "Open Static Preview"
+                            }, void 0, false, {
+                                fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                                lineNumber: 451,
+                                columnNumber: 15
+                            }, this)
+                        }, void 0, false, {
+                            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                            lineNumber: 450,
+                            columnNumber: 13
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                    lineNumber: 445,
+                    columnNumber: 36
+                }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "glass-card overflow-hidden rounded-2xl border border-emerald-100",
+                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("iframe", {
+                        ref: iframeRef,
+                        src: repo.previewUrl,
+                        onLoad: handleFrameLoad,
+                        onError: ()=>{
+                            logImportDebug("ImportedRepoViewer iframe error event", {
+                                repoId,
+                                previewUrl: repo.previewUrl
+                            });
+                            setEmbedState("failed");
+                        },
+                        title: `${repo.name} preview`,
+                        style: {
+                            width: "100%",
+                            height: "80vh",
+                            border: 0,
+                            backgroundColor: "#fff"
+                        }
+                    }, void 0, false, {
+                        fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                        lineNumber: 456,
+                        columnNumber: 13
+                    }, this)
+                }, void 0, false, {
+                    fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+                    lineNumber: 455,
+                    columnNumber: 24
+                }, this)
+            ]
+        }, void 0, true, {
+            fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+            lineNumber: 429,
+            columnNumber: 7
+        }, this)
+    }, void 0, false, {
+        fileName: "[project]/packages/toolbox/src/plugins/RepoImporterRoot.tsx",
+        lineNumber: 428,
+        columnNumber: 10
+    }, this);
 }
-_s2(ImportedRepoViewer, "9nUpNtdnuGAooY1tPw08rYgIXys=", false, function() {
+_s2(ImportedRepoViewer, "8aQXd+qXKMB7s3AYtZse0NodBqs=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$router$2f$dist$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["useParams"],
         __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$router$2f$dist$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["useNavigate"],
@@ -878,15 +1016,22 @@ __turbopack_context__.s([
     "generatedPlugins",
     ()=>generatedPlugins
 ]);
-(()=>{
-    const e = new Error("Cannot find module 'features-octocat-hello-world'");
-    e.code = 'MODULE_NOT_FOUND';
-    throw e;
-})();
+// AUTO-GENERATED IMPORTS - do not edit manually.
+// __AUTO_IMPORTS_START__
+var __TURBOPACK__imported__module__$5b$project$5d2f$packages$2f$features$2d$octocat$2d$hello$2d$world$2f$src$2f$index$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/packages/features-octocat-hello-world/src/index.tsx [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$packages$2f$features$2d$octocat$2d$spoon$2d$knife$2f$src$2f$index$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/packages/features-octocat-spoon-knife/src/index.tsx [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$packages$2f$features$2d$fatkin1012$2d$grand$2d$opening$2f$src$2f$index$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/packages/features-fatkin1012-grand-opening/src/index.tsx [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$packages$2f$features$2d$fatkin1012$2d$sap$2d$local$2d$wiki$2f$src$2f$index$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/packages/features-fatkin1012-sap-local-wiki/src/index.tsx [app-client] (ecmascript)");
+;
+;
+;
 ;
 const generatedPlugins = [
     // __AUTO_PLUGINS_START__
-    featureOctocatHelloWorldPlugin
+    __TURBOPACK__imported__module__$5b$project$5d2f$packages$2f$features$2d$octocat$2d$hello$2d$world$2f$src$2f$index$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"],
+    __TURBOPACK__imported__module__$5b$project$5d2f$packages$2f$features$2d$octocat$2d$spoon$2d$knife$2f$src$2f$index$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"],
+    __TURBOPACK__imported__module__$5b$project$5d2f$packages$2f$features$2d$fatkin1012$2d$grand$2d$opening$2f$src$2f$index$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"],
+    __TURBOPACK__imported__module__$5b$project$5d2f$packages$2f$features$2d$fatkin1012$2d$sap$2d$local$2d$wiki$2f$src$2f$index$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"]
 ];
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
@@ -912,18 +1057,21 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$packages$2f$toolbox$2f$src$2
  * 中央位置管理和載入所有工具箱功能包
  * 每個 feature-* 套件都應該匯出一個 ToolboxPlugin 物件
  */ let registeredPlugins = [];
+let pluginsInitialized = false;
 function getPlugins() {
     return registeredPlugins;
 }
 function registerPlugin(plugin) {
     const exists = registeredPlugins.some((p)=>p.id === plugin.id);
     if (exists) {
-        console.warn(`Plugin with id "${plugin.id}" already registered, skipping.`);
         return;
     }
     registeredPlugins.push(plugin);
 }
 async function initializePlugins() {
+    if (pluginsInitialized) {
+        return;
+    }
     try {
         registerPlugin(__TURBOPACK__imported__module__$5b$project$5d2f$packages$2f$toolbox$2f$src$2f$plugins$2f$repo$2d$importer$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"]);
         __TURBOPACK__imported__module__$5b$project$5d2f$packages$2f$toolbox$2f$src$2f$plugins$2f$generated$2d$imports$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["generatedPlugins"].forEach((plugin)=>{
@@ -937,6 +1085,7 @@ async function initializePlugins() {
         // 這裡可以動態添加更多功能包
         // const projectModule = await import("features-project");
         // if (projectModule.default) registerPlugin(projectModule.default);
+        pluginsInitialized = true;
         console.log(`✓ Initialized ${registeredPlugins.length} plugin(s)`);
     } catch (error) {
         console.warn("Failed to initialize some plugins:", error);
@@ -975,6 +1124,7 @@ __turbopack_context__.s([
     "default",
     ()=>AppRouter
 ]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$build$2f$polyfills$2f$process$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = /*#__PURE__*/ __turbopack_context__.i("[project]/node_modules/next/dist/build/polyfills/process.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/jsx-dev-runtime.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$compiler$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/compiler-runtime.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
@@ -1292,11 +1442,11 @@ _c = AppRouterContent;
 function AppRouter() {
     _s1();
     const $ = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$compiler$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["c"])(5);
-    if ($[0] !== "c84b2de17a0c1f9273768a42b32aaadebe3e533b033e6735720d805d6381974b") {
+    if ($[0] !== "aa3e7bb39009741c8447c282e7ec679cf77e290ce955544e888c57aaee30f5be") {
         for(let $i = 0; $i < 5; $i += 1){
             $[$i] = Symbol.for("react.memo_cache_sentinel");
         }
-        $[0] = "c84b2de17a0c1f9273768a42b32aaadebe3e533b033e6735720d805d6381974b";
+        $[0] = "aa3e7bb39009741c8447c282e7ec679cf77e290ce955544e888c57aaee30f5be";
     }
     const [mounted, setMounted] = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].useState(false);
     let t0;
@@ -1304,6 +1454,14 @@ function AppRouter() {
     if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
         t0 = ({
             "AppRouter[useEffect()]": ()=>{
+                if ("TURBOPACK compile-time truthy", 1) {
+                    if ("serviceWorker" in navigator) {
+                        navigator.serviceWorker.getRegistrations().then(_AppRouterUseEffectAnonymous);
+                    }
+                    if ("caches" in window) {
+                        caches.keys().then(_AppRouterUseEffectAnonymous2);
+                    }
+                }
                 setMounted(true);
             }
         })["AppRouter[useEffect()]"];
@@ -1325,7 +1483,7 @@ function AppRouter() {
                 children: "Loading..."
             }, void 0, false, {
                 fileName: "[project]/packages/toolbox/src/app/app/[...slug]/page.tsx",
-                lineNumber: 135,
+                lineNumber: 143,
                 columnNumber: 12
             }, this);
             $[3] = t2;
@@ -1338,14 +1496,18 @@ function AppRouter() {
     if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
         t2 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$router$2d$dom$2f$dist$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$locals$3e$__["BrowserRouter"], {
             basename: "/app",
+            future: {
+                v7_startTransition: true,
+                v7_relativeSplatPath: true
+            },
             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(AppRouterContent, {}, void 0, false, {
                 fileName: "[project]/packages/toolbox/src/app/app/[...slug]/page.tsx",
-                lineNumber: 146,
-                columnNumber: 41
+                lineNumber: 157,
+                columnNumber: 8
             }, this)
         }, void 0, false, {
             fileName: "[project]/packages/toolbox/src/app/app/[...slug]/page.tsx",
-            lineNumber: 146,
+            lineNumber: 154,
             columnNumber: 10
         }, this);
         $[4] = t2;
@@ -1356,6 +1518,18 @@ function AppRouter() {
 }
 _s1(AppRouter, "LrrVfNW3d1raFE0BNzCTILYmIfo=");
 _c1 = AppRouter;
+function _AppRouterUseEffectAnonymous2(keys) {
+    keys.forEach(_AppRouterUseEffectAnonymousKeysForEach);
+}
+function _AppRouterUseEffectAnonymousKeysForEach(key) {
+    caches.delete(key);
+}
+function _AppRouterUseEffectAnonymous(registrations) {
+    registrations.forEach(_AppRouterUseEffectAnonymousRegistrationsForEach);
+}
+function _AppRouterUseEffectAnonymousRegistrationsForEach(registration) {
+    registration.unregister();
+}
 var _c, _c1;
 __turbopack_context__.k.register(_c, "AppRouterContent");
 __turbopack_context__.k.register(_c1, "AppRouter");

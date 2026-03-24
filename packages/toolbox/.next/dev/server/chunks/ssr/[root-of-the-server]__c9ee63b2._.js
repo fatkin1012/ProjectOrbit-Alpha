@@ -1652,7 +1652,7 @@ __turbopack_context__.s([
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react-jsx-dev-runtime.js [app-ssr] (ecmascript)");
 "use client";
 ;
-const previewUrl = null;
+const previewUrl = "/imported/fatkin1012-sap-local-wiki/index.html";
 const repoUrl = "https://github.com/fatkin1012/SAP-Local-Wiki";
 const sourcePath = "packages/imported-repos/fatkin1012-sap-local-wiki";
 const title = "Sap Local Wiki";
@@ -1662,31 +1662,29 @@ function GeneratedFeatureRoot() {
         className: "-m-6 flex h-[calc(100dvh-4.25rem)] min-h-[calc(100dvh-4.25rem)] w-[calc(100%+3rem)] flex-col bg-white",
         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
             className: "flex h-full min-h-0 w-full flex-1 flex-col",
-            children: ("TURBOPACK compile-time falsy", 0) ? /*#__PURE__*/ "TURBOPACK unreachable" : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
-                className: "h-full w-full overflow-auto bg-white p-4",
-                children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                        className: "text-sm text-slate-700",
-                        children: "No static index.html preview was detected for this repository. You can still use its code from the local folder and adapt it to a native React feature package."
-                    }, void 0, false, {
-                        fileName: "[project]/packages/features-fatkin1012-sap-local-wiki/src/GeneratedFeatureRoot.tsx",
-                        lineNumber: 25,
-                        columnNumber: 13
-                    }, this),
-                    ("TURBOPACK compile-time truthy", 1) ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("pre", {
-                        className: "mt-3 max-h-80 overflow-auto rounded-xl bg-white/85 p-3 text-xs leading-6 text-slate-700",
-                        children: readmeExcerpt
-                    }, void 0, false, {
-                        fileName: "[project]/packages/features-fatkin1012-sap-local-wiki/src/GeneratedFeatureRoot.tsx",
-                        lineNumber: 29,
-                        columnNumber: 15
-                    }, this) : "TURBOPACK unreachable"
-                ]
-            }, void 0, true, {
+            children: ("TURBOPACK compile-time truthy", 1) ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "flex min-h-0 flex-1 overflow-hidden bg-white",
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("iframe", {
+                    src: previewUrl,
+                    title: title + " preview",
+                    style: {
+                        width: "100%",
+                        height: "100%",
+                        border: 0,
+                        backgroundColor: "#fff"
+                    },
+                    loading: "lazy",
+                    sandbox: "allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads allow-presentation"
+                }, void 0, false, {
+                    fileName: "[project]/packages/features-fatkin1012-sap-local-wiki/src/GeneratedFeatureRoot.tsx",
+                    lineNumber: 15,
+                    columnNumber: 13
+                }, this)
+            }, void 0, false, {
                 fileName: "[project]/packages/features-fatkin1012-sap-local-wiki/src/GeneratedFeatureRoot.tsx",
-                lineNumber: 24,
+                lineNumber: 14,
                 columnNumber: 11
-            }, this)
+            }, this) : /*#__PURE__*/ "TURBOPACK unreachable"
         }, void 0, false, {
             fileName: "[project]/packages/features-fatkin1012-sap-local-wiki/src/GeneratedFeatureRoot.tsx",
             lineNumber: 12,

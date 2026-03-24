@@ -20,6 +20,9 @@ type ImportedRepoRecord = {
   nativeScaffoldReason?: string;
   nativeRiskScore?: number;
   nativeRiskBand?: "low" | "medium" | "high";
+  lastSyncedCommit?: string;
+  lastCheckedAt?: string;
+  lastUpdatedAt?: string;
 };
 
 function formatDate(value: string): string {
@@ -84,6 +87,7 @@ export function RepoImporterRoot() {
   const [transformLevel, setTransformLevel] = useState<"strict" | "balanced" | "safe">("balanced");
   const [activatingRepoId, setActivatingRepoId] = useState<string | null>(null);
   const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
+  const [checkingRepoId, setCheckingRepoId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -219,6 +223,45 @@ export function RepoImporterRoot() {
     }
   };
 
+  const handleCheckUpdates = async (repo: ImportedRepoRecord) => {
+    setStatus(null);
+    setSubmitError(null);
+
+    try {
+      setCheckingRepoId(repo.id);
+      const response = await fetch("/api/repo-import/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repoId: repo.id }),
+      });
+
+      const data = (await response.json()) as {
+        updated?: boolean;
+        upToDate?: boolean;
+        repo?: ImportedRepoRecord;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to check updates.");
+      }
+
+      if (data.updated) {
+        setStatus(`Updated ${repo.name} with latest changes. Existing local data was preserved.`);
+      } else if (data.upToDate) {
+        setStatus(`${repo.name} is already up to date.`);
+      } else {
+        setStatus(`Checked ${repo.name} successfully.`);
+      }
+
+      await refresh();
+    } catch (updateError) {
+      setSubmitError(updateError instanceof Error ? updateError.message : "Failed to check updates.");
+    } finally {
+      setCheckingRepoId(null);
+    }
+  };
+
   return (
     <div className="playful-bg min-h-dvh px-4 py-6 md:px-8 md:py-10">
       <main className="mx-auto w-full max-w-6xl space-y-5">
@@ -293,7 +336,16 @@ export function RepoImporterRoot() {
                 <p className="text-xs font-semibold tracking-wider text-slate-500">{repo.owner}</p>
                 <h3 className="mt-1 text-lg font-semibold text-slate-900">{repo.name}</h3>
                 <p className="mt-1 text-xs text-slate-600">Imported: {formatDate(repo.importedAt)}</p>
+                {repo.lastUpdatedAt ? (
+                  <p className="mt-1 text-xs text-slate-600">Last updated: {formatDate(repo.lastUpdatedAt)}</p>
+                ) : null}
+                {repo.lastCheckedAt ? (
+                  <p className="mt-1 text-xs text-slate-600">Last checked: {formatDate(repo.lastCheckedAt)}</p>
+                ) : null}
                 <p className="mt-2 text-xs text-slate-600">Stored at: {repo.sourcePath}</p>
+                {repo.lastSyncedCommit ? (
+                  <p className="mt-1 font-mono text-[11px] text-slate-500">Commit: {repo.lastSyncedCommit.slice(0, 10)}</p>
+                ) : null}
                 {repo.activatedFeaturePackage ? (
                   <p className="mt-1 text-xs font-semibold text-emerald-700">
                     Active native feature: {repo.activatedFeaturePackage}
@@ -311,6 +363,14 @@ export function RepoImporterRoot() {
                 ) : null}
 
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={checkingRepoId === repo.id}
+                    onClick={() => handleCheckUpdates(repo)}
+                    className="rounded-lg border-2 border-sky-300 bg-white/90 px-3 py-2 text-xs font-semibold text-sky-700 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {checkingRepoId === repo.id ? "Checking..." : "Check Updates"}
+                  </button>
                   <button
                     type="button"
                     onClick={() => navigate(`/imported/${repo.id}`)}

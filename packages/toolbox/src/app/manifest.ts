@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Toolbox Platform",
     short_name: "Toolbox",
-    description: "Local-first toolbox with SAP Playbook and extensible feature modules.",
+    description: "Local-first toolbox with extensible feature modules.",
     start_url: "/",
     scope: "/",
     display: "standalone",

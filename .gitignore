@@ -44,3 +44,13 @@ next-env.d.ts
 /packages/imported-repos/
 /packages/toolbox/public/imported/
 /packages/toolbox/.toolbox-imports.json
+
+# toolbox app cache/build artifacts inside monorepo package
+/packages/toolbox/.next/
+/packages/toolbox/out/
+
+# nested package dependency/build caches
+/packages/**/node_modules/
+/packages/**/dist/
+/packages/**/.cache/
+/packages/**/.turbo/

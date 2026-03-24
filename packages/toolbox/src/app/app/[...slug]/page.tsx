@@ -6,6 +6,10 @@ import type { ToolboxPlugin } from "../../../plugin-types";
 import { getPlugins, initializePlugins } from "../../../plugin-registry";
 import styles from "../../(toolbox)/app-router/app-router.module.css";
 
+type AppRouterProps = {
+  basename?: string;
+};
+
 /**
  * SPA Router Component
  * 使用 react-router-dom 實現客戶端路由
@@ -55,7 +59,6 @@ function AppRouterContent() {
             {plugins.flatMap((plugin) =>
               plugin.menu.map((item) => (
                 <Link key={`${plugin.id}-${item.to}`} to={item.to} className={styles.topNavItem}>
-                  {item.icon && <span className={styles.icon}>{item.icon}</span>}
                   <span>{item.label}</span>
                 </Link>
               ))
@@ -63,7 +66,9 @@ function AppRouterContent() {
           </nav>
           <button 
             className={styles.homeButton}
-            onClick={() => navigate("/")}
+            onClick={() => {
+              window.location.assign("/");
+            }}
             title="Back to home"
           >
             🏠
@@ -92,9 +97,6 @@ function AppRouterContent() {
                             onClick={() => navigate(item.to)}
                             className={styles.featureButton}
                           >
-                            <div className={styles.featureIcon}>
-                              {item.icon || "📦"}
-                            </div>
                             <h3>{item.label}</h3>
                             <p>{plugin.name || plugin.id}</p>
                           </button>
@@ -138,7 +140,7 @@ function AppRouterContent() {
   );
 }
 
-export default function AppRouter() {
+export default function AppRouter({ basename = "/app" }: AppRouterProps) {
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -169,7 +171,7 @@ export default function AppRouter() {
 
   return (
     <BrowserRouter
-      basename="/app"
+      basename={basename}
       future={{
         v7_startTransition: true,
         v7_relativeSplatPath: true,

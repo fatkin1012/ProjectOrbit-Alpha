@@ -44,12 +44,6 @@ export async function initializePlugins(): Promise<void> {
       registerPlugin(plugin);
     });
 
-    // 導入 SAP Playbook 功能包
-    const sapPlaybookModule = await import("features-sap-playbook");
-    if (sapPlaybookModule.default) {
-      registerPlugin(sapPlaybookModule.default);
-    }
-
     // 這裡可以動態添加更多功能包
     // const projectModule = await import("features-project");
     // if (projectModule.default) registerPlugin(projectModule.default);

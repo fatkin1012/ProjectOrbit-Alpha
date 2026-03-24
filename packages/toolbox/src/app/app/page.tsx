@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function AppEntryPage() {
-  redirect("/app/sap");
+  redirect("/app/import");
 }

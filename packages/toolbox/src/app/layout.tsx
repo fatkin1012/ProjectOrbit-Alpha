@@ -14,7 +14,7 @@ const nunito = Nunito({
 
 export const metadata: Metadata = {
   title: "Toolbox Platform",
-  description: "A local-first toolbox web app with SAP Playbook and extensible feature modules.",
+  description: "A local-first toolbox web app with extensible feature modules.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/icon.svg",

@@ -20,6 +20,17 @@ export type ImportedRepoRecord = {
   nativeScaffoldReason?: string;
   nativeRiskScore?: number;
   nativeRiskBand?: "low" | "medium" | "high";
+  lastSyncedCommit?: string;
+  lastCheckedAt?: string;
+  lastUpdatedAt?: string;
+};
+
+export type UpdateImportedRepoResult = {
+  repo: ImportedRepoRecord;
+  checkedAt: string;
+  remoteHead: string | null;
+  upToDate: boolean;
+  updated: boolean;
 };
 
 export type NativeTransformLevel = "strict" | "balanced" | "safe";
@@ -131,6 +142,83 @@ async function runGitClone(repoUrl: string, destination: string): Promise<void> 
         return;
       }
       resolve();
+    });
+  });
+}
+
+async function runGitLsRemoteHead(repoUrl: string): Promise<string | null> {
+  return await new Promise<string | null>((resolve, reject) => {
+    const probe = spawn("git", ["ls-remote", repoUrl, "HEAD"], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    probe.stdout.on("data", (chunk) => {
+      stdout += String(chunk);
+    });
+
+    probe.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+
+    probe.on("error", () => {
+      reject(new Error("Git executable not found. Please install Git and retry."));
+    });
+
+    probe.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(stderr.trim() || "Failed to query remote repository HEAD."));
+        return;
+      }
+
+      const line = stdout
+        .split(/\r?\n/)
+        .map((entry) => entry.trim())
+        .find(Boolean);
+
+      if (!line) {
+        resolve(null);
+        return;
+      }
+
+      const hash = line.split(/\s+/)[0]?.trim() ?? "";
+      resolve(hash || null);
+    });
+  });
+}
+
+async function runGitRevParseHead(repoPath: string): Promise<string | null> {
+  return await new Promise<string | null>((resolve, reject) => {
+    const revParse = spawn("git", ["rev-parse", "HEAD"], {
+      cwd: repoPath,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    revParse.stdout.on("data", (chunk) => {
+      stdout += String(chunk);
+    });
+
+    revParse.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+
+    revParse.on("error", () => {
+      reject(new Error("Git executable not found. Please install Git and retry."));
+    });
+
+    revParse.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(stderr.trim() || "Failed to read repository HEAD commit."));
+        return;
+      }
+
+      const commit = stdout.trim();
+      resolve(commit || null);
     });
   });
 }
@@ -812,7 +900,7 @@ async function scaffoldFeaturePackage(
 
   const featureRoot = `"use client";\n\nconst previewUrl: string | null = ${previewUrlLiteral};\nconst repoUrl = ${repoUrlLiteral};\nconst sourcePath = ${sourcePathLiteral};\nconst title = ${titleLiteral};\nconst readmeExcerpt: string | null = ${readmeLiteral};\n\nexport default function GeneratedFeatureRoot() {\n  return (\n    <div className=\"-m-6 flex h-[calc(100dvh-4.25rem)] min-h-[calc(100dvh-4.25rem)] w-[calc(100%+3rem)] flex-col bg-white\">\n      <main className=\"flex h-full min-h-0 w-full flex-1 flex-col\">\n        {previewUrl ? (\n          <div className=\"flex min-h-0 flex-1 overflow-hidden bg-white\">\n            <iframe\n              src={previewUrl}\n              title={title + " preview"}\n              style={{ width: \"100%\", height: \"100%\", border: 0, backgroundColor: \"#fff\" }}\n              loading=\"lazy\"\n              sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads allow-presentation\"\n            />\n          </div>\n        ) : (\n          <section className=\"h-full w-full overflow-auto bg-white p-4\">\n            <p className=\"text-sm text-slate-700\">\n              No static index.html preview was detected for this repository. You can still use its code from the local folder and adapt it to a native React feature package.\n            </p>\n            {readmeExcerpt ? (\n              <pre className=\"mt-3 max-h-80 overflow-auto rounded-xl bg-white/85 p-3 text-xs leading-6 text-slate-700\">\n                {readmeExcerpt}\n              </pre>\n            ) : null}\n          </section>\n        )}\n      </main>\n    </div>\n  );\n}\n`;
 
-  const indexSource = `import type { ToolboxPlugin } from "@toolbox/plugin-types";\nimport GeneratedFeatureRoot from "./GeneratedFeatureRoot";\n\nconst ${pluginSymbol}: ToolboxPlugin = {\n  id: ${JSON.stringify(`imported-${record.id}`)},\n  name: ${titleLiteral},\n  version: "0.1.0",\n  routes: [\n    {\n      path: ${JSON.stringify(`${routePath}/*`)},\n      element: <GeneratedFeatureRoot />,\n    },\n  ],\n  menu: [\n    {\n      label: ${titleLiteral},\n      to: ${JSON.stringify(routePath)},\n      icon: "Repo",\n    },\n  ],\n};\n\nexport default ${pluginSymbol};\n`;
+  const indexSource = `import type { ToolboxPlugin } from "@toolbox/plugin-types";\nimport GeneratedFeatureRoot from "./GeneratedFeatureRoot";\n\nconst ${pluginSymbol}: ToolboxPlugin = {\n  id: ${JSON.stringify(`imported-${record.id}`)},\n  name: ${titleLiteral},\n  version: "0.1.0",\n  routes: [\n    {\n      path: ${JSON.stringify(`${routePath}/*`)},\n      element: <GeneratedFeatureRoot />,\n    },\n  ],\n  menu: [\n    {\n      label: ${titleLiteral},\n      to: ${JSON.stringify(routePath)},\n    },\n  ],\n};\n\nexport default ${pluginSymbol};\n`;
 
   await writeFile(path.join(packageDir, "package.json"), JSON.stringify(packageJson, null, 2), "utf8");
   await writeFile(path.join(packageDir, "tsconfig.json"), JSON.stringify(tsconfig, null, 2), "utf8");
@@ -867,6 +955,7 @@ export async function importRepository(repoUrl: string): Promise<ImportedRepoRec
     }
 
     const readmeExcerpt = await readReadme(tempRepoPath);
+    const lastSyncedCommit = await runGitRevParseHead(tempRepoPath);
 
     const record: ImportedRepoRecord = {
       id,
@@ -877,12 +966,113 @@ export async function importRepository(repoUrl: string): Promise<ImportedRepoRec
       sourcePath: `packages/imported-repos/${id}`,
       previewUrl,
       readmeExcerpt,
+      lastSyncedCommit,
+      lastCheckedAt: new Date().toISOString(),
+      lastUpdatedAt: new Date().toISOString(),
     };
 
     records.unshift(record);
     await saveImportedRepos(records);
 
     return record;
+  } finally {
+    await rm(tempBase, { recursive: true, force: true });
+  }
+}
+
+export async function checkAndUpdateImportedRepository(repoId: string): Promise<UpdateImportedRepoResult> {
+  const sanitizedId = sanitizeSegment(repoId);
+  const records = await loadImportedRepos();
+  const repo = records.find((record) => record.id === sanitizedId);
+
+  if (!repo) {
+    throw new Error("Imported repository not found.");
+  }
+
+  const checkedAt = new Date().toISOString();
+  const remoteHead = await runGitLsRemoteHead(repo.repoUrl);
+
+  if (!remoteHead) {
+    const unchanged: ImportedRepoRecord = {
+      ...repo,
+      lastCheckedAt: checkedAt,
+    };
+    await saveImportedRepos(records.map((record) => (record.id === repo.id ? unchanged : record)));
+    return {
+      repo: unchanged,
+      checkedAt,
+      remoteHead: null,
+      upToDate: true,
+      updated: false,
+    };
+  }
+
+  if (repo.lastSyncedCommit && repo.lastSyncedCommit === remoteHead) {
+    const unchanged: ImportedRepoRecord = {
+      ...repo,
+      lastCheckedAt: checkedAt,
+    };
+    await saveImportedRepos(records.map((record) => (record.id === repo.id ? unchanged : record)));
+    return {
+      repo: unchanged,
+      checkedAt,
+      remoteHead,
+      upToDate: true,
+      updated: false,
+    };
+  }
+
+  const tempBase = await mkdtemp(path.join(os.tmpdir(), "toolbox-update-"));
+  const tempRepoPath = path.join(tempBase, "repo");
+
+  try {
+    await runGitClone(repo.repoUrl, tempRepoPath);
+
+    const sourcePath = path.join(SOURCE_ROOT, repo.id);
+    await mkdir(sourcePath, { recursive: true });
+
+    // Sync incoming files into the existing folder without deleting extras,
+    // so user-added local files remain available.
+    await copyDirectory(tempRepoPath, sourcePath);
+
+    let previewRoot = await findPreviewRoot(tempRepoPath);
+    if (previewRoot && !(await isStaticPreviewCompatible(previewRoot))) {
+      previewRoot = null;
+    }
+
+    if (!previewRoot) {
+      previewRoot = await tryBuildPreviewRoot(tempRepoPath);
+    }
+
+    let previewUrl = repo.previewUrl;
+    if (previewRoot) {
+      const previewPath = path.join(PUBLIC_ROOT, repo.id);
+      await rm(previewPath, { recursive: true, force: true });
+      await copyDirectory(previewRoot, previewPath);
+      await normalizeCopiedPreviewIndex(previewPath);
+      previewUrl = `/imported/${repo.id}/index.html`;
+    }
+
+    const readmeExcerpt = (await readReadme(tempRepoPath)) ?? repo.readmeExcerpt;
+    const lastSyncedCommit = (await runGitRevParseHead(tempRepoPath)) ?? remoteHead;
+
+    const updatedRepo: ImportedRepoRecord = {
+      ...repo,
+      previewUrl,
+      readmeExcerpt,
+      lastSyncedCommit,
+      lastCheckedAt: checkedAt,
+      lastUpdatedAt: checkedAt,
+    };
+
+    await saveImportedRepos(records.map((record) => (record.id === repo.id ? updatedRepo : record)));
+    return {
+      repo: updatedRepo,
+      checkedAt,
+      remoteHead,
+      upToDate: false,
+      updated: true,
+    };
   } finally {
     await rm(tempBase, { recursive: true, force: true });
   }

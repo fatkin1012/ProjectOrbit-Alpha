@@ -1,0 +1,19 @@
+{
+  "name": "features-octocat-hello-world",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generated feature package for imported repo https://github.com/octocat/Hello-World",
+  "main": "src/index.tsx",
+  "exports": {
+    ".": "./src/index.tsx"
+  },
+  "dependencies": {
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  }
+}

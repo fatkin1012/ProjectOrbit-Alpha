@@ -1,4 +1,6 @@
 import type { ToolboxPlugin } from "./plugin-types";
+import repoImporterPlugin from "./plugins/repo-importer";
+import { generatedPlugins } from "./plugins/generated-imports";
 
 /**
  * Plugin Registry
@@ -7,6 +9,7 @@ import type { ToolboxPlugin } from "./plugin-types";
  */
 
 let registeredPlugins: ToolboxPlugin[] = [];
+let pluginsInitialized = false;
 
 /**
  * 取得所有已註冊的外掛程式
@@ -21,7 +24,6 @@ export function getPlugins(): ToolboxPlugin[] {
 export function registerPlugin(plugin: ToolboxPlugin): void {
   const exists = registeredPlugins.some((p) => p.id === plugin.id);
   if (exists) {
-    console.warn(`Plugin with id "${plugin.id}" already registered, skipping.`);
     return;
   }
   registeredPlugins.push(plugin);
@@ -32,7 +34,16 @@ export function registerPlugin(plugin: ToolboxPlugin): void {
  * 動態導入 features-* 套件
  */
 export async function initializePlugins(): Promise<void> {
+  if (pluginsInitialized) {
+    return;
+  }
+
   try {
+    registerPlugin(repoImporterPlugin);
+    generatedPlugins.forEach((plugin) => {
+      registerPlugin(plugin);
+    });
+
     // 導入 SAP Playbook 功能包
     const sapPlaybookModule = await import("features-sap-playbook");
     if (sapPlaybookModule.default) {
@@ -43,6 +54,7 @@ export async function initializePlugins(): Promise<void> {
     // const projectModule = await import("features-project");
     // if (projectModule.default) registerPlugin(projectModule.default);
 
+    pluginsInitialized = true;
     console.log(`✓ Initialized ${registeredPlugins.length} plugin(s)`);
   } catch (error) {
     console.warn("Failed to initialize some plugins:", error);

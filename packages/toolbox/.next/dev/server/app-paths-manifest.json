@@ -1,4 +1,6 @@
 {
+  "/api/repo-import/activate/route": "app/api/repo-import/activate/route.js",
+  "/api/repo-import/route": "app/api/repo-import/route.js",
   "/app/[...slug]/page": "app/app/[...slug]/page.js",
   "/manifest.webmanifest/route": "app/manifest.webmanifest/route.js"
 }

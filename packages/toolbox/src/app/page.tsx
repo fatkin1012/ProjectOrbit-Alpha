@@ -1,164 +1,107 @@
 "use client";
 
 import Link from "next/link";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
 export default function Home() {
   const features = [
     {
       id: "sap-playbook",
-      icon: "📖",
+      icon: "Knowledge Base",
       label: "SAP Playbook",
-      description: "Searchable wiki for SAP case solutions and procedures",
-      href: "/app/sap"
+      description: "Capture and search SAP fixes with screenshots and local-first storage.",
+      href: "/app/sap",
     },
     {
       id: "project",
-      icon: "📊",
+      icon: "Projects",
       label: "Project Manager",
-      description: "Manage and track projects (coming soon)",
+      description: "Plan workstreams and track milestones in one shared workspace.",
       href: "/app/project",
-      disabled: true
+      disabled: true,
     },
     {
-      id: "finance",
-      icon: "💰",
-      label: "Finance Tools",
-      description: "Financial tracking and analysis (coming soon)",
-      href: "/app/finance",
-      disabled: true
-    }
+      id: "repo-import",
+      icon: "Import",
+      label: "Repo Import Wizard",
+      description: "Paste a GitHub URL and import the project into Toolbox as a local page.",
+      href: "/app/import",
+    },
   ];
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      padding: "2rem",
-      fontFamily: "system-ui, -apple-system, sans-serif"
-    }}>
-      {/* Header */}
-      <div style={{
-        textAlign: "center",
-        marginBottom: "3rem",
-        color: "#fff"
-      }}>
-        <h1 style={{ fontSize: "3.5rem", marginBottom: "0.5rem", fontWeight: "bold" }}>
-          🧰 Toolbox
-        </h1>
-        <p style={{ fontSize: "1.2rem", opacity: 0.9, marginBottom: "0.5rem" }}>
-          Your All-in-One Application Suite
-        </p>
-        <p style={{ fontSize: "0.95rem", opacity: 0.8 }}>
-          Single platform, multiple powerful features
-        </p>
-      </div>
+    <div className="playful-bg min-h-dvh px-4 py-6 md:px-8 md:py-10">
+      <main className="mx-auto w-full max-w-6xl space-y-6">
+        <header className="glass-card pop-in relative overflow-hidden rounded-3xl p-6 md:p-8">
+          <div className="float-slow absolute -right-8 -top-6 h-28 w-28 rounded-full bg-gradient-to-br from-emerald-300 to-green-500 opacity-70 blur-[1px]" />
+          <div className="absolute -left-6 bottom-2 h-24 w-24 rounded-full bg-gradient-to-br from-lime-300 to-emerald-500 opacity-70" />
 
-      {/* Features Grid */}
-      <div style={{
-        maxWidth: "1200px",
-        margin: "0 auto",
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-        gap: "2rem",
-        marginBottom: "2rem"
-      }}>
-        {features.map((feature) => (
-          <Link
-            key={feature.id}
-            href={feature.disabled ? "#" : feature.href}
-            style={{
-              textDecoration: "none",
-              cursor: feature.disabled ? "not-allowed" : "pointer"
-            }}
-            onClick={(e) => {
-              if (feature.disabled) {
-                e.preventDefault();
-              }
-            }}
-          >
-            <div style={{
-              background: "#fff",
-              borderRadius: "1rem",
-              padding: "2rem",
-              boxShadow: "0 8px 16px rgba(0, 0, 0, 0.1)",
-              transition: "all 0.3s ease",
-              opacity: feature.disabled ? 0.6 : 1,
-              transform: feature.disabled ? "none" : "translateY(0)",
-              height: "100%",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between"
-            } as React.CSSProperties}
-            onMouseEnter={(e) => {
-              if (!feature.disabled) {
-                (e.currentTarget as HTMLElement).style.transform = "translateY(-8px)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 24px rgba(0, 0, 0, 0.15)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!feature.disabled) {
-                (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 16px rgba(0, 0, 0, 0.1)";
-              }
-            }}
-            >
-              <div>
-                <div style={{
-                  fontSize: "3.5rem",
-                  marginBottom: "1rem"
-                }}>
-                  {feature.icon}
-                </div>
-                <h2 style={{
-                  fontSize: "1.5rem",
-                  fontWeight: "600",
-                  color: "#333",
-                  margin: "0 0 0.5rem 0"
-                }}>
-                  {feature.label}
-                </h2>
-                <p style={{
-                  fontSize: "0.95rem",
-                  color: "#666",
-                  margin: 0,
-                  lineHeight: "1.5"
-                }}>
-                  {feature.description}
-                </p>
-              </div>
-              
-              <div style={{
-                marginTop: "1.5rem",
-                paddingTop: "1rem",
-                borderTop: "1px solid #eee"
-              }}>
-                <span style={{
-                  display: "inline-block",
-                  padding: "0.5rem 1rem",
-                  background: feature.disabled ? "#f0f0f0" : "#667eea",
-                  color: feature.disabled ? "#999" : "#fff",
-                  borderRadius: "0.5rem",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                  textDecoration: "none"
-                }}>
-                  {feature.disabled ? "Coming Soon" : "Open →"}
-                </span>
-              </div>
+          <div className="relative">
+            <p className="inline-flex rounded-full bg-white/80 px-3 py-1 text-xs font-semibold tracking-wide text-slate-700">
+              TOOLBOX WEB APP
+            </p>
+            <h1 className="mt-3 text-3xl font-semibold leading-tight text-slate-900 md:text-5xl">
+              Toolbox
+              <span className="bg-gradient-to-r from-emerald-700 via-green-600 to-teal-500 bg-clip-text text-transparent">
+                {" "}
+                Platform
+              </span>
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-700 md:text-base">
+              Same visual language as SAP Playbook, now at app level. Launch tools, save workflows,
+              and install it to your desktop like a standalone app.
+            </p>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Link
+                href="/app"
+                className="h-11 rounded-xl border-2 border-emerald-500 bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-500"
+              >
+                Open Toolbox
+              </Link>
+              <Link
+                href="/app/sap"
+                className="h-11 rounded-xl border-2 border-emerald-300 bg-white/90 px-4 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50"
+              >
+                Open SAP Playbook
+              </Link>
+              <PWAInstallPrompt />
             </div>
-          </Link>
-        ))}
-      </div>
+          </div>
+        </header>
 
-      {/* Footer */}
-      <div style={{
-        textAlign: "center",
-        color: "#fff",
-        opacity: 0.8,
-        fontSize: "0.9rem"
-      }}>
-        <p>Built with Next.js, React, TypeScript &amp; Workspaces</p>
-      </div>
+        <section className="grid gap-4 md:grid-cols-2">
+          {features.map((feature) => {
+            const cardClasses = feature.disabled
+              ? "glass-card rounded-2xl p-5 opacity-65"
+              : "glass-card rounded-2xl p-5 transition hover:-translate-y-0.5";
+
+            return (
+              <Link
+                key={feature.id}
+                href={feature.disabled ? "#" : feature.href}
+                className={cardClasses}
+                onClick={(event) => {
+                  if (feature.disabled) {
+                    event.preventDefault();
+                  }
+                }}
+              >
+                <p className="text-xs font-semibold tracking-wider text-slate-600">{feature.icon}</p>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-900">{feature.label}</h2>
+                <p className="mt-2 text-sm leading-7 text-slate-700">{feature.description}</p>
+                <p className="mt-4 text-sm font-semibold text-emerald-700">
+                  {feature.disabled ? "Coming soon" : "Open feature"}
+                </p>
+              </Link>
+            );
+          })}
+        </section>
+
+        <footer className="pb-2 text-center text-xs font-semibold text-slate-600">
+          Built with Next.js, React, TypeScript and local-first architecture.
+        </footer>
+      </main>
     </div>
   );
 }

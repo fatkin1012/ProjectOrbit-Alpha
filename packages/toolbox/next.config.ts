@@ -6,7 +6,10 @@ const nextConfig: NextConfig = {
   transpilePackages: [
     "features-sap-playbook",
     "features-project",
-    "features-finance"
+    "features-finance",
+    "features-octocat-hello-world",
+    "features-fatkin1012-grand-opening",
+    "features-octocat-spoon-knife"
   ]
 };
 

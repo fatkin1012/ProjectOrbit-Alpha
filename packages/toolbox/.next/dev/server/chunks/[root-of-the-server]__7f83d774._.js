@@ -50,9 +50,9 @@ __turbopack_context__.s([
 ]);
 function manifest() {
     return {
-        name: "SAP Playbook",
-        short_name: "SAP Wiki",
-        description: "Local-first SAP case wiki with search, screenshots, and offline install.",
+        name: "Toolbox Platform",
+        short_name: "Toolbox",
+        description: "Local-first toolbox with SAP Playbook and extensible feature modules.",
         start_url: "/",
         scope: "/",
         display: "standalone",

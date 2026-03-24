@@ -391,11 +391,11 @@ _c = AppRouterContent;
 function AppRouter() {
     _s1();
     const $ = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$compiler$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["c"])(5);
-    if ($[0] !== "34e7c227f71e609624ff4aa6c9188d8d6084fd0e739c4b1a89bfc470b2b1b4d2") {
+    if ($[0] !== "c84b2de17a0c1f9273768a42b32aaadebe3e533b033e6735720d805d6381974b") {
         for(let $i = 0; $i < 5; $i += 1){
             $[$i] = Symbol.for("react.memo_cache_sentinel");
         }
-        $[0] = "34e7c227f71e609624ff4aa6c9188d8d6084fd0e739c4b1a89bfc470b2b1b4d2";
+        $[0] = "c84b2de17a0c1f9273768a42b32aaadebe3e533b033e6735720d805d6381974b";
     }
     const [mounted, setMounted] = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].useState(false);
     let t0;

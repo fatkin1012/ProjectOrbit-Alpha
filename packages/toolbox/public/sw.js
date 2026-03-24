@@ -1,5 +1,5 @@
-const CACHE_NAME = "sap-playbook-cache-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/icon.svg"];
+const CACHE_NAME = "toolbox-platform-cache-v2";
+const APP_SHELL = ["/", "/app", "/app/sap", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -33,6 +33,12 @@ self.addEventListener("fetch", (event) => {
 
   const requestUrl = new URL(request.url);
   if (requestUrl.origin !== self.location.origin) {
+    return;
+  }
+
+  // Keep API responses fresh. Cached API responses can make repo lists look stale after delete.
+  if (requestUrl.pathname.startsWith("/api/")) {
+    event.respondWith(fetch(request));
     return;
   }
 

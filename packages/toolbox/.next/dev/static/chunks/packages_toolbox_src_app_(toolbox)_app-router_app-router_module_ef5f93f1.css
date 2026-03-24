@@ -1,6 +1,6 @@
 /* [project]/packages/toolbox/src/app/(toolbox)/app-router/app-router.module.css [app-client] (css) */
 .app-router-module__JYRw2W__container {
-  background-color: #f5f5f5;
+  background: radial-gradient(1200px 400px at -20% -10%, #8cf0b3 0%, #0000 55%), radial-gradient(800px 300px at 100% 0, #6fe4a4 0%, #0000 52%), linear-gradient(160deg, #f4fff6 0%, #e9fff1 50%, #effef5 100%);
   min-height: 100vh;
 }
 
@@ -16,18 +16,20 @@
 }
 
 .app-router-module__JYRw2W__topbar {
-  background-color: #fff;
-  border-bottom: 1px solid #e0e0e0;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  background-color: #ffffffd6;
+  border-bottom: 1px solid #d1fae5;
   flex-wrap: wrap;
   align-items: center;
   gap: 1.25rem;
   padding: 1rem 1.5rem;
   display: flex;
-  box-shadow: 0 2px 4px #0000000d;
+  box-shadow: 0 8px 24px #1ea6721f;
 }
 
 .app-router-module__JYRw2W__topbar h1 {
-  color: #333;
+  color: #124233;
   margin: 0;
   font-size: 1.5rem;
 }
@@ -41,9 +43,9 @@
 }
 
 .app-router-module__JYRw2W__topNavItem {
-  color: #333;
-  background-color: #fff;
-  border: 1px solid #e0e0e0;
+  color: #166534;
+  background-color: #ffffffe6;
+  border: 1px solid #a7f3d0;
   border-radius: .55rem;
   align-items: center;
   padding: .45rem .7rem;
@@ -53,8 +55,8 @@
 }
 
 .app-router-module__JYRw2W__topNavItem:hover {
-  background-color: #f0f0f0;
-  border-color: #cfcfcf;
+  background-color: #ecfdf5;
+  border-color: #34d399;
 }
 
 .app-router-module__JYRw2W__homeButton {
@@ -68,7 +70,7 @@
 }
 
 .app-router-module__JYRw2W__homeButton:hover {
-  background-color: #f0f0f0;
+  background-color: #ecfdf5;
 }
 
 .app-router-module__JYRw2W__content {
@@ -101,13 +103,13 @@
 }
 
 .app-router-module__JYRw2W__dashboardHeader h2 {
-  color: #333;
+  color: #14532d;
   margin-bottom: .5rem;
   font-size: 2.5rem;
 }
 
 .app-router-module__JYRw2W__dashboardHeader p {
-  color: #666;
+  color: #166534;
   font-size: 1.1rem;
 }
 
@@ -127,7 +129,7 @@
   color: #fff;
   cursor: pointer;
   text-align: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #059669 0%, #22c55e 100%);
   border: none;
   border-radius: 1rem;
   flex-direction: column;
@@ -138,12 +140,12 @@
   padding: 2rem 1.5rem;
   transition: all .3s;
   display: flex;
-  box-shadow: 0 4px 6px #0000001a;
+  box-shadow: 0 8px 18px #10b98147;
 }
 
 .app-router-module__JYRw2W__featureButton:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 12px #00000026;
+  box-shadow: 0 12px 24px #10b98152;
 }
 
 .app-router-module__JYRw2W__featureIcon {
@@ -177,7 +179,7 @@
 }
 
 .app-router-module__JYRw2W__notFound a {
-  color: #007bff;
+  color: #059669;
   text-decoration: none;
 }
 

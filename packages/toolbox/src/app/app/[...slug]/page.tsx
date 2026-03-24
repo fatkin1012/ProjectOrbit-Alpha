@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, useNavigate, Link } from "react-router-dom";
-import type { ToolboxPlugin } from "@/plugin-types";
-import { getPlugins, initializePlugins } from "@/plugin-registry";
+import type { ToolboxPlugin } from "../../../plugin-types";
+import { getPlugins, initializePlugins } from "../../../plugin-registry";
 import styles from "../../(toolbox)/app-router/app-router.module.css";
 
 /**
@@ -142,6 +142,24 @@ export default function AppRouter() {
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
+    if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((registration) => {
+            void registration.unregister();
+          });
+        });
+      }
+
+      if ("caches" in window) {
+        void caches.keys().then((keys) => {
+          keys.forEach((key) => {
+            void caches.delete(key);
+          });
+        });
+      }
+    }
+
     setMounted(true);
   }, []);
 
@@ -150,7 +168,13 @@ export default function AppRouter() {
   }
 
   return (
-    <BrowserRouter basename="/app">
+    <BrowserRouter
+      basename="/app"
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <AppRouterContent />
     </BrowserRouter>
   );

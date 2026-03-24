@@ -1,9 +1,6 @@
-# 終止所有 node 進程
-Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force
+# Stop all Node processes so the web app can bind to the expected port.
+Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
-# 清除快取
-cd packages/toolbox
-Remove-Item -Path './.next' -Recurse -Force -ErrorAction SilentlyContinue
-
-# 啟動開發伺服器
-npx next dev -p 3002
+# Start Toolbox web app from workspace root using npm.cmd (PowerShell-safe).
+Set-Location $PSScriptRoot
+npm.cmd run dev --workspace=packages/toolbox -- --port 3002

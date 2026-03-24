@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local toolbox repo importer artifacts
+/packages/imported-repos/
+/packages/toolbox/public/imported/
+/packages/toolbox/.toolbox-imports.json

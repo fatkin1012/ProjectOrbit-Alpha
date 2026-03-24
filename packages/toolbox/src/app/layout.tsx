@@ -13,8 +13,8 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "Local Searchable Wiki",
-  description: "A playful, searchable SAP case wiki for daily problem-solving.",
+  title: "Toolbox Platform",
+  description: "A local-first toolbox web app with SAP Playbook and extensible feature modules.",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/icon.svg",

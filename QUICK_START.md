@@ -15,12 +15,12 @@ npm run dev
 
 2. **SPA 應用** (http://localhost:3000/app)
    - ✓ 左側邊欄 + 主內容區
-   - ✓ 邊欄顯示「📖 SAP Playbook」選單
+   - ✓ 邊欄顯示已啟用功能選單
 
-3. **SAP 功能** (http://localhost:3000/app/sap)
-   - ✓ 載入 SAP Playbook UI（玻璃卡片設計）
-   - ✓ 可新增/編輯/刪除 Case
-   - ✓ 搜尋和 T-Code 篩選正常
+3. **功能頁** (例如 /app/repo-*)
+   - ✓ 可正常切換到已註冊功能
+   - ✓ 頁面內容可載入，無空白頁
+   - ✓ 路由切換不報錯
 
 ## 資料夾結構
 ```
@@ -30,10 +30,10 @@ packages/
 │   ├── src/app/         Next.js 應用
 │   └── src/app/(toolbox)/app-router/  SPA 路由
 │
-└── features-sap-playbook/  SAP 功能包
-    └── src/
-        ├── index.tsx    Plugin 導出
-        └── SapRoot.tsx  主組件
+└── features-*/            功能包（可有多個）
+   └── src/
+      ├── index.tsx     Plugin 導出
+      └── *Root.tsx     主組件
 ```
 
 ## 新增功能包 (3 步)
@@ -67,7 +67,7 @@ npm run build:all     # 構建所有 workspaces
 | 首頁 | `packages/toolbox/src/app/page.tsx` |
 | Plugin 系統 | `packages/toolbox/src/plugin-types.ts` + `plugin-registry.ts` |
 | SPA 路由 | `packages/toolbox/src/app/(toolbox)/app-router/page.tsx` |
-| SAP UI 主組件 | `packages/features-sap-playbook/src/SapRoot.tsx` |
+| 自動註冊清單 | `packages/toolbox/src/plugins/generated-imports.ts` |
 
 ## 技術棧
 - **主框架**：Next.js 16 + React 19

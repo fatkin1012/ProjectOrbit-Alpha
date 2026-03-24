@@ -4,7 +4,6 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   reactStrictMode: true,
   transpilePackages: [
-    "features-sap-playbook",
     "features-project",
     "features-finance",
     "features-octocat-hello-world",

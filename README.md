@@ -1,8 +1,8 @@
-# Toolbox (TypeScript WebApp)
+# ProjectOrbit (TypeScript WebApp)
 
 Toolbox 是一個以 TypeScript 開發的本地 Web 應用平台，目標是把「多個工具型功能」整合到同一個入口，避免每個小工具都要獨立啟動、獨立部署、獨立維護。
 
-## 為什麼要開發 Toolbox
+## 為什麼要開發 ProjectOrbit
 
 1. 減少工具分散問題：把常用的內部工具收斂到同一個工作台，降低切換成本。
 2. 降低整合成本：透過 plugin 架構，把功能模組化，新增或移除功能不需要重寫整個網站。

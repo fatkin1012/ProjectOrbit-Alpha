@@ -1,7 +1,0 @@
-{
-  "version": 1,
-  "functions": {
-    "/api/repo-import": {},
-    "/api/repo-import/activate": {}
-  }
-}

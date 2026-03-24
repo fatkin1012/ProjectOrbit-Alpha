@@ -42,7 +42,16 @@ next-env.d.ts
 
 # local toolbox repo importer artifacts
 /packages/imported-repos/
+
+# monorepo packages policy:
+# ignore all package folders by default, keep only packages/toolbox tracked
+/packages/*
+!/packages/toolbox/
+!/packages/toolbox/**
+
+# keep importer output local-only even inside whitelisted packages/toolbox
 /packages/toolbox/public/imported/
+/packages/toolbox/public/imported/**
 /packages/toolbox/.toolbox-imports.json
 
 # toolbox app cache/build artifacts inside monorepo package

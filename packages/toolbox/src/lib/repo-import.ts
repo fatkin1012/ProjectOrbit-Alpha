@@ -23,6 +23,19 @@ export type ImportedRepoRecord = {
   lastSyncedCommit?: string;
   lastCheckedAt?: string;
   lastUpdatedAt?: string;
+  previewHealth?: PreviewHealthCheckResult;
+};
+
+export type PreviewHealthCheckResult = {
+  checkedAt: string;
+  passed: boolean;
+  score: number;
+  summary: string;
+  checks: Array<{
+    id: string;
+    passed: boolean;
+    detail: string;
+  }>;
 };
 
 export type UpdateImportedRepoResult = {
@@ -704,6 +717,9 @@ async function normalizeCopiedPreviewIndex(previewPath: string): Promise<void> {
     return;
   }
 
+  const previewId = path.basename(previewPath);
+  const previewBasePath = `/imported/${previewId}`;
+
   let html = await readFile(indexPath, "utf8");
 
   // Replace all root-relative paths (/_next/, /assets/, /favicon.ico, etc.) 
@@ -712,7 +728,1059 @@ async function normalizeCopiedPreviewIndex(previewPath: string): Promise<void> {
   // Matches: ["|']/<word-char> and replaces with ["|']./<word-char>
   html = html.replace(/(['"])\/([a-zA-Z_-])/g, "$1./$2");
 
+  // Ensure runtime chunk loading stays under /imported/<id>/ rather than app root.
+  html = html.replace(/(["'])\/_next\//g, `$1${previewBasePath}/_next/`);
+
+  const localStorageGuard = `<script id="toolbox-localstorage-guard">(function(){try{var key="sap-wiki-cases";var raw=window.localStorage.getItem(key);if(!raw){return;}var parsed=JSON.parse(raw);if(!Array.isArray(parsed)){window.localStorage.removeItem(key);}}catch(_error){try{window.localStorage.removeItem("sap-wiki-cases");}catch(_ignore){}}})();</script>`;
+  const earlyProbeScript = `<script id="toolbox-early-probe">(function(){if(window.__toolboxEarlyProbeInstalled){return;}window.__toolboxEarlyProbeInstalled=true;window.__toolboxEarlyLogs=window.__toolboxEarlyLogs||[];window.__toolboxEarlyLog=function(msg){try{window.__toolboxEarlyLogs.push("[EARLY] "+msg);}catch(_e){}};window.__toolboxEarlyLog("probe-installed");window.addEventListener("error",function(e){window.__toolboxEarlyLog("error:"+(e.message||"unknown")+" @ "+(e.filename||"unknown")+":"+(e.lineno||0)+":"+(e.colno||0));},true);window.addEventListener("unhandledrejection",function(e){var reason=e.reason instanceof Error?(e.reason.stack||e.reason.message):String(e.reason);window.__toolboxEarlyLog("rejection:"+reason);},true);var originalAdd=EventTarget.prototype.addEventListener;EventTarget.prototype.addEventListener=function(type,listener,options){if(type==="click"&&(this===document||this===window||this===document.body||this===document.documentElement)){window.__toolboxEarlyLog("addEventListener(click) on "+(this===document?"document":this===window?"window":this===document.body?"body":"documentElement"));}return originalAdd.call(this,type,listener,options);};document.addEventListener("DOMContentLoaded",function(){window.__toolboxEarlyLog("DOMContentLoaded");});window.addEventListener("load",function(){window.__toolboxEarlyLog("window-load");});})();</script>`;
+  if (html.includes("<head>")) {
+    if (!html.includes("id=\"toolbox-early-probe\"")) {
+      html = html.replace("<head>", `<head>${earlyProbeScript}`);
+    }
+    if (!html.includes("id=\"toolbox-localstorage-guard\"")) {
+      html = html.replace("<head>", `<head>${localStorageGuard}`);
+    }
+  } else {
+    if (!html.includes("id=\"toolbox-early-probe\"")) {
+      html = earlyProbeScript + html;
+    }
+    if (!html.includes("id=\"toolbox-localstorage-guard\"")) {
+      html = localStorageGuard + html;
+    }
+  }
+
+  // Inject floating back button to Toolbox home
+  const floatingButtonCode = `
+<style>
+#toolbox-back-button {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 999999;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.9), rgba(5, 150, 105, 0.9));
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+#toolbox-back-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, rgb(16, 185, 129), rgb(5, 150, 105));
+}
+#toolbox-back-button:active {
+  transform: translateY(0);
+}
+</style>
+<button id="toolbox-back-button">← Back to Toolbox</button>
+<script>
+document.getElementById("toolbox-back-button").addEventListener("click", function() {
+  window.location.href = "/";
+});
+</script>
+`;
+
+  // Inject before closing body tag once only.
+  if (!html.includes("id=\"toolbox-back-button\"")) {
+    if (html.includes("</body>")) {
+      html = html.replace("</body>", floatingButtonCode + "</body>");
+    } else if (html.includes("</html>")) {
+      html = html.replace("</html>", floatingButtonCode + "</html>");
+    } else {
+      // Fallback: append to end of document
+      html += floatingButtonCode;
+    }
+  }
+
+  const debugConsoleCode = `
+<style>
+#toolbox-debug-toggle {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 999999;
+  border: none;
+  border-radius: 999px;
+  padding: 0.6rem 0.9rem;
+  background: #0f172a;
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.35);
+}
+#toolbox-debug-panel {
+  position: fixed;
+  left: 1rem;
+  right: 1rem;
+  bottom: 3.5rem;
+  height: 42vh;
+  max-height: 360px;
+  z-index: 999999;
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.96);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.5);
+  display: none;
+  overflow: hidden;
+}
+#toolbox-debug-panel.toolbox-open {
+  display: flex;
+  flex-direction: column;
+}
+#toolbox-debug-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+  font-size: 12px;
+}
+#toolbox-debug-list {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  list-style: none;
+  overflow: auto;
+  font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+}
+#toolbox-debug-list li {
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.25);
+  padding: 0.35rem 0;
+}
+#toolbox-debug-list .err { color: #fda4af; }
+#toolbox-debug-list .warn { color: #fde68a; }
+#toolbox-debug-list .ok { color: #86efac; }
+#toolbox-debug-actions { display: flex; gap: 0.4rem; }
+#toolbox-debug-actions button {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: transparent;
+  color: #e2e8f0;
+  border-radius: 6px;
+  padding: 0.2rem 0.45rem;
+  font-size: 11px;
+  cursor: pointer;
+}
+</style>
+<button id="toolbox-debug-toggle" type="button">Debug Console</button>
+<section id="toolbox-debug-panel" aria-label="Toolbox preview debug console">
+  <div id="toolbox-debug-header">
+    <strong>Preview Runtime Debug</strong>
+    <div id="toolbox-debug-actions">
+      <button id="toolbox-debug-copy" type="button">Copy</button>
+      <button id="toolbox-debug-clear" type="button">Clear</button>
+      <button id="toolbox-debug-close" type="button">Close</button>
+    </div>
+  </div>
+  <ul id="toolbox-debug-list"></ul>
+</section>
+<script id="toolbox-debug-script">
+(function () {
+  if (window.__toolboxDebugInstalled) {
+    return;
+  }
+  window.__toolboxDebugInstalled = true;
+
+  var toggle = document.getElementById("toolbox-debug-toggle");
+  var panel = document.getElementById("toolbox-debug-panel");
+  var list = document.getElementById("toolbox-debug-list");
+  var closeBtn = document.getElementById("toolbox-debug-close");
+  var clearBtn = document.getElementById("toolbox-debug-clear");
+  var copyBtn = document.getElementById("toolbox-debug-copy");
+  var maxRows = 200;
+
+  function addLine(level, text) {
+    if (!list) {
+      return;
+    }
+    var li = document.createElement("li");
+    var time = new Date().toISOString().slice(11, 23);
+    li.className = level;
+    li.textContent = "[" + time + "] [" + level.toUpperCase() + "] " + text;
+    list.appendChild(li);
+    while (list.childElementCount > maxRows) {
+      list.removeChild(list.firstChild);
+    }
+    list.scrollTop = list.scrollHeight;
+  }
+
+  function toText(args) {
+    return Array.prototype.map.call(args, function (item) {
+      if (item instanceof Error) {
+        return item.stack || item.message || String(item);
+      }
+      if (typeof item === "string") {
+        return item;
+      }
+      try {
+        return JSON.stringify(item);
+      } catch (_err) {
+        return String(item);
+      }
+    }).join(" ");
+  }
+
+  function openPanel() {
+    if (!panel) {
+      return;
+    }
+    panel.classList.add("toolbox-open");
+  }
+
+  function closePanel() {
+    if (!panel) {
+      return;
+    }
+    panel.classList.remove("toolbox-open");
+  }
+
+  if (toggle) {
+    toggle.addEventListener("click", function () {
+      if (!panel) {
+        return;
+      }
+      if (panel.classList.contains("toolbox-open")) {
+        closePanel();
+      } else {
+        openPanel();
+      }
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener("click", closePanel);
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener("click", function () {
+      if (list) {
+        list.innerHTML = "";
+      }
+      addLine("ok", "Debug log cleared");
+    });
+  }
+
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async function () {
+      if (!list) {
+        return;
+      }
+      var rows = Array.prototype.map.call(list.querySelectorAll("li"), function (node) { return node.textContent || ""; });
+      try {
+        await navigator.clipboard.writeText(rows.join("\n"));
+        addLine("ok", "Copied debug log to clipboard");
+      } catch (_copyErr) {
+        addLine("warn", "Clipboard copy failed");
+      }
+    });
+  }
+
+  var originalError = console.error;
+  var originalWarn = console.warn;
+  var originalLog = console.log;
+  console.error = function () {
+    addLine("err", toText(arguments));
+    originalError.apply(console, arguments);
+  };
+  console.warn = function () {
+    addLine("warn", toText(arguments));
+    originalWarn.apply(console, arguments);
+  };
+  console.log = function () {
+    addLine("ok", toText(arguments));
+    originalLog.apply(console, arguments);
+  };
+
+  window.addEventListener("error", function (event) {
+    var msg = (event.message || "Unhandled error") + " @ " + (event.filename || "unknown") + ":" + (event.lineno || 0) + ":" + (event.colno || 0);
+    addLine("err", msg);
+  });
+
+  window.addEventListener("unhandledrejection", function (event) {
+    var reason = event.reason instanceof Error ? (event.reason.stack || event.reason.message) : String(event.reason);
+    addLine("err", "Unhandled promise rejection: " + reason);
+  });
+
+  document.addEventListener("click", function (event) {
+    var el = event.target;
+    if (!(el instanceof Element)) {
+      return;
+    }
+    var tag = el.tagName.toLowerCase();
+    var id = el.id ? "#" + el.id : "";
+    var cls = el.className && typeof el.className === "string" ? ("." + el.className.split(/\s+/).filter(Boolean).slice(0, 2).join(".")) : "";
+    addLine("ok", "click " + tag + id + cls);
+  }, true);
+
+  var earlyCount = Array.isArray(window.__toolboxEarlyLogs) ? window.__toolboxEarlyLogs.length : 0;
+  addLine("warn", "[EARLY] log-count=" + earlyCount);
+  if (earlyCount > 0) {
+    for (var i = 0; i < window.__toolboxEarlyLogs.length; i += 1) {
+      addLine("warn", window.__toolboxEarlyLogs[i]);
+    }
+  }
+
+  function hasReactFiberMarkers() {
+    var root = document.body;
+    if (!root) {
+      return false;
+    }
+    var stack = [root];
+    while (stack.length > 0) {
+      var node = stack.pop();
+      if (!(node instanceof Element)) {
+        continue;
+      }
+      var keys = Object.keys(node);
+      for (var k = 0; k < keys.length; k += 1) {
+        if (keys[k].indexOf("__reactFiber$") === 0 || keys[k].indexOf("__reactProps$") === 0) {
+          return true;
+        }
+      }
+      for (var c = 0; c < node.children.length; c += 1) {
+        stack.push(node.children[c]);
+      }
+    }
+    return false;
+  }
+
+  function installFallbackRuntime() {
+    if (window.__toolboxFallbackInstalled) {
+      return;
+    }
+    window.__toolboxFallbackInstalled = true;
+    addLine("warn", "Installing fallback runtime for non-hydrated preview");
+
+    function getText(el) {
+      return el && typeof el.textContent === "string" ? el.textContent.trim() : "";
+    }
+
+    function findButtonByText(label) {
+      var buttons = Array.prototype.slice.call(document.querySelectorAll("button"));
+      for (var i = 0; i < buttons.length; i += 1) {
+        if (getText(buttons[i]) === label) {
+          return buttons[i];
+        }
+      }
+      return null;
+    }
+
+    function getStatusNode() {
+      return document.querySelector('p[role="status"]');
+    }
+
+    function setStatus(message) {
+      var node = getStatusNode();
+      if (node) {
+        node.textContent = message;
+      }
+      addLine("ok", "status: " + message);
+    }
+
+    function loadCases() {
+      try {
+        var raw = window.localStorage.getItem("sap-wiki-cases");
+        if (!raw) {
+          return [];
+        }
+        var parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (_loadErr) {
+        return [];
+      }
+    }
+
+    function saveCases(cases) {
+      window.localStorage.setItem("sap-wiki-cases", JSON.stringify(cases));
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function getCaseTCodes(item) {
+      if (Array.isArray(item?.tCodes) && item.tCodes.length > 0) {
+        return item.tCodes;
+      }
+      if (item?.tCode) {
+        return [item.tCode];
+      }
+      return [];
+    }
+
+    function getCaseScreenshots(item) {
+      if (Array.isArray(item?.screenshots) && item.screenshots.length > 0) {
+        return item.screenshots.filter(Boolean);
+      }
+      if (item?.screenshot) {
+        return [item.screenshot];
+      }
+      return [];
+    }
+
+    function setMetric(label, value) {
+      var labels = Array.prototype.slice.call(document.querySelectorAll("article p"));
+      for (var i = 0; i < labels.length; i += 1) {
+        var node = labels[i];
+        if (getText(node) !== label) {
+          continue;
+        }
+        var parent = node.parentElement;
+        if (!parent) {
+          continue;
+        }
+        var paragraphs = parent.querySelectorAll("p");
+        if (paragraphs.length > 1) {
+          paragraphs[1].textContent = String(value);
+        }
+        return;
+      }
+    }
+
+    var fallbackEditor = {
+      modal: null,
+      canvas: null,
+      image: null,
+      color: null,
+      size: null,
+      eraser: null,
+      undo: null,
+      save: null,
+      close: null,
+      caseId: null,
+      imageIndex: 0,
+      history: [],
+      drawing: false,
+      lastPoint: null,
+    };
+
+    function ensureFallbackEditor() {
+      if (fallbackEditor.modal) {
+        return;
+      }
+
+      var host = document.createElement("div");
+      host.id = "toolbox-fallback-image-editor";
+      host.style.cssText = "position:fixed;inset:0;z-index:1000000;background:rgba(2,6,23,.8);display:none;align-items:center;justify-content:center;padding:12px;";
+      host.innerHTML = '<div style="width:min(980px,96vw);height:min(760px,92vh);background:#fff;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;">'
+        + '<div style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #e2e8f0;flex-wrap:wrap;">'
+        + '<strong style="font-size:13px;color:#0f172a;">Fallback Image Editor</strong>'
+        + '<label style="font-size:12px;color:#334155;">Color <input id="tb-fallback-color" type="color" value="#ff3344" /></label>'
+        + '<label style="font-size:12px;color:#334155;">Size <input id="tb-fallback-size" type="range" min="1" max="24" value="4" /></label>'
+        + '<button id="tb-fallback-eraser" type="button" style="padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;">Eraser</button>'
+        + '<button id="tb-fallback-undo" type="button" style="padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;">Undo</button>'
+        + '<button id="tb-fallback-save" type="button" style="padding:4px 8px;border:1px solid #16a34a;border-radius:6px;background:#16a34a;color:#fff;">Save Edited Copy</button>'
+        + '<button id="tb-fallback-close" type="button" style="margin-left:auto;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;">Close</button>'
+        + '</div>'
+        + '<div style="position:relative;flex:1;background:#f8fafc;display:flex;align-items:center;justify-content:center;overflow:auto;">'
+        + '<img id="tb-fallback-image" alt="Editable screenshot" style="max-width:100%;max-height:100%;display:block;" />'
+        + '<canvas id="tb-fallback-canvas" style="position:absolute;inset:0;margin:auto;touch-action:none;"></canvas>'
+        + '</div>'
+        + '</div>';
+      document.body.appendChild(host);
+
+      fallbackEditor.modal = host;
+      fallbackEditor.canvas = host.querySelector("#tb-fallback-canvas");
+      fallbackEditor.image = host.querySelector("#tb-fallback-image");
+      fallbackEditor.color = host.querySelector("#tb-fallback-color");
+      fallbackEditor.size = host.querySelector("#tb-fallback-size");
+      fallbackEditor.eraser = host.querySelector("#tb-fallback-eraser");
+      fallbackEditor.undo = host.querySelector("#tb-fallback-undo");
+      fallbackEditor.save = host.querySelector("#tb-fallback-save");
+      fallbackEditor.close = host.querySelector("#tb-fallback-close");
+
+      var eraserEnabled = false;
+
+      function canvasPoint(event) {
+        var rect = fallbackEditor.canvas.getBoundingClientRect();
+        return {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top,
+        };
+      }
+
+      function pushHistory() {
+        fallbackEditor.history.push(fallbackEditor.canvas.toDataURL("image/png"));
+      }
+
+      function drawLine(from, to) {
+        var ctx = fallbackEditor.canvas.getContext("2d");
+        ctx.globalCompositeOperation = eraserEnabled ? "destination-out" : "source-over";
+        ctx.strokeStyle = eraserEnabled ? "rgba(0,0,0,1)" : fallbackEditor.color.value;
+        ctx.lineWidth = Number(fallbackEditor.size.value || 4);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(to.x, to.y);
+        ctx.stroke();
+      }
+
+      fallbackEditor.canvas.addEventListener("pointerdown", function (event) {
+        fallbackEditor.drawing = true;
+        fallbackEditor.lastPoint = canvasPoint(event);
+      });
+
+      fallbackEditor.canvas.addEventListener("pointermove", function (event) {
+        if (!fallbackEditor.drawing || !fallbackEditor.lastPoint) {
+          return;
+        }
+        var point = canvasPoint(event);
+        drawLine(fallbackEditor.lastPoint, point);
+        fallbackEditor.lastPoint = point;
+      });
+
+      fallbackEditor.canvas.addEventListener("pointerup", function () {
+        if (fallbackEditor.drawing) {
+          pushHistory();
+        }
+        fallbackEditor.drawing = false;
+        fallbackEditor.lastPoint = null;
+      });
+
+      fallbackEditor.canvas.addEventListener("pointerleave", function () {
+        fallbackEditor.drawing = false;
+        fallbackEditor.lastPoint = null;
+      });
+
+      fallbackEditor.eraser.addEventListener("click", function () {
+        eraserEnabled = !eraserEnabled;
+        fallbackEditor.eraser.textContent = eraserEnabled ? "Eraser ON" : "Eraser";
+      });
+
+      fallbackEditor.undo.addEventListener("click", function () {
+        if (fallbackEditor.history.length <= 1) {
+          return;
+        }
+        fallbackEditor.history.pop();
+        var prev = fallbackEditor.history[fallbackEditor.history.length - 1];
+        var img = new Image();
+        img.onload = function () {
+          var ctx = fallbackEditor.canvas.getContext("2d");
+          ctx.clearRect(0, 0, fallbackEditor.canvas.width, fallbackEditor.canvas.height);
+          ctx.drawImage(img, 0, 0, fallbackEditor.canvas.width, fallbackEditor.canvas.height);
+        };
+        img.src = prev;
+      });
+
+      fallbackEditor.close.addEventListener("click", function () {
+        fallbackEditor.modal.style.display = "none";
+      });
+
+      fallbackEditor.save.addEventListener("click", function () {
+        var cases = loadCases();
+        var caseIndex = cases.findIndex(function (item) { return String(item?.id) === String(fallbackEditor.caseId); });
+        if (caseIndex < 0) {
+          setStatus("Could not save edited image.");
+          return;
+        }
+
+        var baseImage = new Image();
+        baseImage.onload = function () {
+          var merged = document.createElement("canvas");
+          merged.width = baseImage.naturalWidth;
+          merged.height = baseImage.naturalHeight;
+          var mergedCtx = merged.getContext("2d");
+          mergedCtx.drawImage(baseImage, 0, 0, merged.width, merged.height);
+          mergedCtx.drawImage(fallbackEditor.canvas, 0, 0, merged.width, merged.height);
+          var edited = merged.toDataURL("image/png");
+
+          var targetCase = cases[caseIndex] || {};
+          var screenshots = getCaseScreenshots(targetCase);
+          screenshots.push(edited);
+          targetCase.screenshots = screenshots;
+          targetCase.screenshot = screenshots[0] || targetCase.screenshot;
+          cases[caseIndex] = targetCase;
+
+          saveCases(cases);
+          renderFallbackCases(cases);
+          fallbackEditor.modal.style.display = "none";
+          setStatus("Edited image saved as a new copy.");
+        };
+        baseImage.src = fallbackEditor.image.src;
+      });
+    }
+
+    function openFallbackEditor(caseId, imageIndex, imageSrc) {
+      ensureFallbackEditor();
+      fallbackEditor.caseId = caseId;
+      fallbackEditor.imageIndex = imageIndex;
+      fallbackEditor.modal.style.display = "flex";
+      fallbackEditor.image.onload = function () {
+        var rect = fallbackEditor.image.getBoundingClientRect();
+        fallbackEditor.canvas.width = Math.max(1, Math.round(rect.width));
+        fallbackEditor.canvas.height = Math.max(1, Math.round(rect.height));
+        var ctx = fallbackEditor.canvas.getContext("2d");
+        ctx.clearRect(0, 0, fallbackEditor.canvas.width, fallbackEditor.canvas.height);
+        fallbackEditor.history = [fallbackEditor.canvas.toDataURL("image/png")];
+      };
+      fallbackEditor.image.src = imageSrc;
+    }
+
+    function renderFallbackCases(cases) {
+      setMetric("TOTAL CASES", cases.length);
+      setMetric("VISIBLE NOW", cases.length);
+      var latest = cases.length > 0 ? getCaseTCodes(cases[0]).join(", ") || "N/A" : "No cases yet";
+      setMetric("LATEST HOTSPOT", latest);
+
+      var placeholder = Array.prototype.find.call(
+        document.querySelectorAll("article"),
+        function (node) {
+          return getText(node).indexOf("No matching cases yet") !== -1;
+        },
+      );
+
+      var targetContainer = placeholder?.parentElement;
+      if (!targetContainer) {
+        return;
+      }
+
+      if (!cases.length) {
+        targetContainer.innerHTML = '<article class="glass-card rounded-2xl p-6 text-sm text-slate-700">No matching cases yet. Add one on the right and it will appear here instantly.</article>';
+        return;
+      }
+
+      var cards = cases
+        .slice(0, 20)
+        .map(function (item, caseIndex) {
+          var tCodes = getCaseTCodes(item).join(", ") || "N/A";
+          var title = escapeHtml(item?.title || "Untitled case");
+          var requirement = escapeHtml(item?.requirement || "");
+          var steps = escapeHtml(item?.steps || "");
+          var screenshots = getCaseScreenshots(item);
+          var imagesHtml = screenshots
+            .slice(0, 6)
+            .map(function (img, idx) {
+              return '<div style="display:flex;flex-direction:column;gap:4px;">'
+                + '<img src="' + escapeHtml(img) + '" alt="case screenshot" style="width:140px;height:90px;object-fit:cover;border-radius:8px;border:1px solid #cbd5e1;" />'
+                + '<button type="button" class="toolbox-fallback-edit-image" data-case-id="' + escapeHtml(String(item?.id ?? caseIndex)) + '" data-image-index="' + idx + '" data-image-src="' + escapeHtml(img) + '" style="padding:4px 6px;border:1px solid #94a3b8;border-radius:6px;background:#fff;font-size:11px;">Edit Image</button>'
+                + '</div>';
+            })
+            .join("");
+          return '<article class="glass-card rounded-2xl p-4 text-sm text-slate-700">'
+            + '<p class="text-xs font-semibold tracking-wider text-slate-600">' + escapeHtml(tCodes) + '</p>'
+            + '<h4 class="mt-1 text-base font-semibold text-slate-900">' + title + '</h4>'
+            + (requirement ? '<p class="mt-2 text-xs text-slate-600"><strong>Requirement:</strong> ' + requirement + '</p>' : '')
+            + (steps ? '<p class="mt-2 text-xs text-slate-600"><strong>Steps:</strong> ' + steps + '</p>' : '')
+            + (imagesHtml ? '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">' + imagesHtml + '</div>' : '')
+            + '</article>';
+        })
+        .join("");
+
+      targetContainer.innerHTML = cards;
+
+      var editButtons = targetContainer.querySelectorAll(".toolbox-fallback-edit-image");
+      Array.prototype.forEach.call(editButtons, function (button) {
+        button.addEventListener("click", function () {
+          var caseId = button.getAttribute("data-case-id");
+          var imageIndex = Number(button.getAttribute("data-image-index") || "0");
+          var imageSrc = button.getAttribute("data-image-src") || "";
+          if (!imageSrc) {
+            return;
+          }
+          openFallbackEditor(caseId, imageIndex, imageSrc);
+        });
+      });
+    }
+
+    var exportBtn = findButtonByText("Export Backup");
+    var importBtn = findButtonByText("Import Backup");
+    var saveBtn = findButtonByText("Save To Wiki");
+    var importInput = document.querySelector('input[type="file"][accept*="json"]');
+
+    if (exportBtn) {
+      exportBtn.addEventListener("click", function () {
+        try {
+          var cases = loadCases();
+          var blob = new Blob([JSON.stringify(cases, null, 2)], { type: "application/json" });
+          var url = URL.createObjectURL(blob);
+          var link = document.createElement("a");
+          link.href = url;
+          link.download = "sap-wiki-backup.json";
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+          setStatus("Backup downloaded as JSON.");
+        } catch (err) {
+          setStatus("Export failed. Try again.");
+          addLine("err", "fallback export failed: " + (err instanceof Error ? err.message : String(err)));
+        }
+      });
+    }
+
+    if (importBtn && importInput) {
+      importBtn.addEventListener("click", function () {
+        importInput.click();
+      });
+
+      importInput.addEventListener("change", function (event) {
+        var target = event.target;
+        if (!(target instanceof HTMLInputElement) || !target.files || target.files.length === 0) {
+          return;
+        }
+        var file = target.files[0];
+        var reader = new FileReader();
+        reader.onload = function () {
+          try {
+            var text = typeof reader.result === "string" ? reader.result : "";
+            var parsed = JSON.parse(text);
+            if (!Array.isArray(parsed)) {
+              throw new Error("Backup must be an array");
+            }
+            saveCases(parsed);
+            renderFallbackCases(parsed);
+            setStatus("Imported " + parsed.length + " case(s) into local wiki.");
+          } catch (err) {
+            setStatus("Import failed. Use a valid backup JSON file.");
+            addLine("err", "fallback import failed: " + (err instanceof Error ? err.message : String(err)));
+          }
+          target.value = "";
+        };
+        reader.onerror = function () {
+          setStatus("Import failed. Use a valid backup JSON file.");
+          target.value = "";
+        };
+        reader.readAsText(file);
+      });
+    }
+
+    function getInputValue(selector) {
+      var input = document.querySelector(selector);
+      if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
+        return input.value.trim();
+      }
+      return "";
+    }
+
+    function updateSaveButtonState() {
+      if (!saveBtn) {
+        return;
+      }
+      var canSave = Boolean(getInputValue("#tcode") && getInputValue("#title") && getInputValue("#requirement") && getInputValue("#steps"));
+      saveBtn.disabled = !canSave;
+    }
+
+    ["#tcode", "#title", "#requirement", "#steps"].forEach(function (selector) {
+      var node = document.querySelector(selector);
+      if (node) {
+        node.addEventListener("input", updateSaveButtonState);
+      }
+    });
+
+    if (saveBtn) {
+      saveBtn.addEventListener("click", function () {
+        var tCodesRaw = getInputValue("#tcode");
+        var title = getInputValue("#title");
+        var requirement = getInputValue("#requirement");
+        var steps = getInputValue("#steps");
+        var tCodes = tCodesRaw.split(/[\s,]+/).map(function (code) { return code.trim().toUpperCase(); }).filter(Boolean);
+        if (!tCodes.length || !title || !requirement || !steps) {
+          setStatus("Please fill all required fields before saving.");
+          return;
+        }
+
+        var cases = loadCases();
+        cases.unshift({
+          id: String(Date.now()),
+          tCode: tCodes[0],
+          tCodes: tCodes,
+          title: title,
+          requirement: requirement,
+          steps: steps,
+          screenshots: [],
+          createdAt: Date.now(),
+        });
+        saveCases(cases);
+        renderFallbackCases(cases);
+        setStatus("Saved to local wiki using fallback runtime.");
+      });
+      updateSaveButtonState();
+    }
+
+    renderFallbackCases(loadCases());
+  }
+
+  window.setTimeout(function () {
+    if (hasReactFiberMarkers()) {
+      addLine("ok", "React hydration markers detected");
+      return;
+    }
+    addLine("warn", "React hydration markers not detected");
+    installFallbackRuntime();
+  }, 1400);
+
+  addLine("ok", "Debug console installed");
+  addLine("ok", "URL: " + window.location.href);
+})();
+</script>
+`;
+
+  if (!html.includes("id=\"toolbox-debug-toggle\"")) {
+    if (html.includes("</body>")) {
+      html = html.replace("</body>", debugConsoleCode + "</body>");
+    } else if (html.includes("</html>")) {
+      html = html.replace("</html>", debugConsoleCode + "</html>");
+    } else {
+      html += debugConsoleCode;
+    }
+  }
+
   await writeFile(indexPath, html, "utf8");
+
+  const chunksRoot = path.join(previewPath, "_next", "static", "chunks");
+  if (!(await exists(chunksRoot))) {
+    return;
+  }
+
+  const rewriteChunkPrefixes = async (directory: string): Promise<void> => {
+    const entries = await readdir(directory, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await rewriteChunkPrefixes(entryPath);
+        continue;
+      }
+
+      if (!entry.isFile() || !entry.name.endsWith(".js")) {
+        continue;
+      }
+
+      const source = await readFile(entryPath, "utf8");
+      const rewritten = source
+        .replace(/(["'])\/_next\//g, `$1${previewBasePath}/_next/`)
+        .replace(/(["'])\/sw\.js(["'])/g, "$1./sw.js$2");
+
+      if (rewritten !== source) {
+        await writeFile(entryPath, rewritten, "utf8");
+      }
+    }
+  };
+
+  await rewriteChunkPrefixes(chunksRoot);
+}
+
+async function runPreviewHealthCheck(previewPath: string): Promise<PreviewHealthCheckResult> {
+  const checkedAt = new Date().toISOString();
+  const checks: PreviewHealthCheckResult["checks"] = [];
+
+  const indexPath = path.join(previewPath, "index.html");
+  const hasIndex = await exists(indexPath);
+  checks.push({
+    id: "index-html",
+    passed: hasIndex,
+    detail: hasIndex ? "index.html exists" : "index.html missing",
+  });
+
+  let indexHtml = "";
+  if (hasIndex) {
+    indexHtml = await readFile(indexPath, "utf8");
+  }
+
+  const hasDebugConsole = indexHtml.includes("id=\"toolbox-debug-toggle\"");
+  checks.push({
+    id: "debug-console",
+    passed: hasDebugConsole,
+    detail: hasDebugConsole ? "Debug console injected" : "Debug console missing",
+  });
+
+  const hasFallbackRuntime = indexHtml.includes("Installing fallback runtime for non-hydrated preview");
+  checks.push({
+    id: "fallback-runtime",
+    passed: hasFallbackRuntime,
+    detail: hasFallbackRuntime ? "Fallback runtime injected" : "Fallback runtime missing",
+  });
+
+  const hasLocalStorageGuard = indexHtml.includes("id=\"toolbox-localstorage-guard\"");
+  checks.push({
+    id: "localstorage-guard",
+    passed: hasLocalStorageGuard,
+    detail: hasLocalStorageGuard ? "localStorage guard injected" : "localStorage guard missing",
+  });
+
+  const chunksRoot = path.join(previewPath, "_next", "static", "chunks");
+  const hasChunksRoot = await exists(chunksRoot);
+  checks.push({
+    id: "chunks-root",
+    passed: hasChunksRoot,
+    detail: hasChunksRoot ? "_next/static/chunks exists" : "_next/static/chunks missing",
+  });
+
+  let chunkFileCount = 0;
+  let chunkHasRootPrefix = false;
+
+  if (hasChunksRoot) {
+    const inspectChunks = async (directory: string): Promise<void> => {
+      const entries = await readdir(directory, { withFileTypes: true });
+      for (const entry of entries) {
+        const entryPath = path.join(directory, entry.name);
+        if (entry.isDirectory()) {
+          await inspectChunks(entryPath);
+          continue;
+        }
+        if (!entry.isFile() || !entry.name.endsWith(".js")) {
+          continue;
+        }
+
+        chunkFileCount += 1;
+        const source = await readFile(entryPath, "utf8");
+        if (/(["'])\/_next\//.test(source)) {
+          chunkHasRootPrefix = true;
+        }
+      }
+    };
+
+    await inspectChunks(chunksRoot);
+  }
+
+  checks.push({
+    id: "chunk-files",
+    passed: chunkFileCount > 0,
+    detail: chunkFileCount > 0 ? `${chunkFileCount} chunk files found` : "No chunk files found",
+  });
+
+  checks.push({
+    id: "chunk-prefix-rewrite",
+    passed: !chunkHasRootPrefix,
+    detail: chunkHasRootPrefix ? "Found root /_next/ prefix in chunks" : "Chunk prefixes rewritten",
+  });
+
+  const passedCount = checks.filter((check) => check.passed).length;
+  const score = Math.round((passedCount / checks.length) * 100);
+  const passed = checks.every((check) => check.passed);
+  const summary = passed
+    ? "Preview health check passed"
+    : `Preview health check: ${passedCount}/${checks.length} checks passed`;
+
+  return {
+    checkedAt,
+    passed,
+    score,
+    summary,
+    checks,
+  };
+}
+
+async function neutralizePreviewServiceWorker(previewPath: string): Promise<void> {
+  const swPath = path.join(previewPath, "sw.js");
+  const noOpSw = `self.addEventListener("install", () => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+      await self.clients.claim();
+      await self.registration.unregister();
+    })(),
+  );
+});
+
+self.addEventListener("fetch", () => {
+  // Intentionally no-op to avoid stale offline caches in imported previews.
+});
+`;
+
+  await writeFile(swPath, noOpSw, "utf8");
+
+  const chunksRoot = path.join(previewPath, "_next", "static", "chunks");
+  if (!(await exists(chunksRoot))) {
+    return;
+  }
+
+  const rewriteChunkFiles = async (directory: string): Promise<void> => {
+    const entries = await readdir(directory, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await rewriteChunkFiles(entryPath);
+        continue;
+      }
+
+      if (!entry.isFile() || !entry.name.endsWith(".js")) {
+        continue;
+      }
+
+      let script = await readFile(entryPath, "utf8");
+      const original = script;
+
+      script = script
+        .replaceAll('navigator.serviceWorker.register("/sw.js")', 'navigator.serviceWorker.register("./sw.js")')
+        .replaceAll("navigator.serviceWorker.register('/sw.js')", "navigator.serviceWorker.register('./sw.js')");
+
+      if (script !== original) {
+        await writeFile(entryPath, script, "utf8");
+      }
+    }
+  };
+
+  await rewriteChunkFiles(chunksRoot);
+}
+
+async function resolvePublishedPreviewUrl(repoId: string): Promise<string | null> {
+  const previewPath = path.join(PUBLIC_ROOT, repoId, "index.html");
+  if (await exists(previewPath)) {
+    return `/imported/${repoId}/index.html`;
+  }
+
+  return null;
+}
+
+async function publishPreviewRoot(repoId: string, previewRoot: string): Promise<string> {
+  const previewPath = path.join(PUBLIC_ROOT, repoId);
+  await rm(previewPath, { recursive: true, force: true });
+  await copyDirectory(previewRoot, previewPath);
+  await normalizeCopiedPreviewIndex(previewPath);
+  await neutralizePreviewServiceWorker(previewPath);
+  return `/imported/${repoId}/index.html`;
+}
+
+async function recoverPreviewUrlForRepo(record: ImportedRepoRecord): Promise<string | null> {
+  if (record.previewUrl) {
+    return record.previewUrl;
+  }
+
+  const alreadyPublished = await resolvePublishedPreviewUrl(record.id);
+  if (alreadyPublished) {
+    return alreadyPublished;
+  }
+
+  const sourcePath = path.join(SOURCE_ROOT, record.id);
+  if (!(await exists(sourcePath))) {
+    return null;
+  }
+
+  let previewRoot = await findPreviewRoot(sourcePath);
+  if (previewRoot && !(await isStaticPreviewCompatible(previewRoot))) {
+    previewRoot = null;
+  }
+
+  if (!previewRoot) {
+    previewRoot = await tryBuildPreviewRoot(sourcePath);
+  }
+
+  if (!previewRoot) {
+    return null;
+  }
+
+  return await publishPreviewRoot(record.id, previewRoot);
 }
 
 async function readReadme(repoPath: string): Promise<string | null> {
@@ -734,7 +1802,51 @@ export async function loadImportedRepos(): Promise<ImportedRepoRecord[]> {
 
   const raw = await readFile(STORE_FILE, "utf8");
   const parsed = JSON.parse(raw) as ImportedRepoRecord[];
-  return Array.isArray(parsed) ? parsed : [];
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+
+  let changed = false;
+  const normalized: ImportedRepoRecord[] = [];
+
+  for (const record of parsed) {
+    const publishedPreviewPath = path.join(PUBLIC_ROOT, record.id);
+    let previewHealth = record.previewHealth;
+    if (!previewHealth && (record.previewUrl || (await exists(path.join(publishedPreviewPath, "index.html"))))) {
+      previewHealth = await runPreviewHealthCheck(publishedPreviewPath);
+      changed = true;
+    }
+
+    if (record?.previewUrl) {
+      normalized.push({
+        ...record,
+        previewHealth,
+      });
+      continue;
+    }
+
+    const recoveredPreviewUrl = await resolvePublishedPreviewUrl(record.id);
+    if (recoveredPreviewUrl) {
+      normalized.push({
+        ...record,
+        previewUrl: recoveredPreviewUrl,
+        previewHealth,
+      });
+      changed = true;
+      continue;
+    }
+
+    normalized.push({
+      ...record,
+      previewHealth,
+    });
+  }
+
+  if (changed) {
+    await saveImportedRepos(normalized);
+  }
+
+  return normalized;
 }
 
 async function saveImportedRepos(records: ImportedRepoRecord[]): Promise<void> {
@@ -884,7 +1996,8 @@ async function scaffoldFeaturePackage(
     include: ["src/**/*"],
   };
 
-  const previewUrlLiteral = JSON.stringify(record.previewUrl);
+  const previewVersion = encodeURIComponent(record.lastUpdatedAt ?? record.importedAt);
+  const previewUrlLiteral = JSON.stringify(record.previewUrl ? `${record.previewUrl}?v=${previewVersion}` : null);
   const repoUrlLiteral = JSON.stringify(record.repoUrl);
   const sourcePathLiteral = JSON.stringify(record.sourcePath);
   const titleLiteral = JSON.stringify(featureTitle);
@@ -898,7 +2011,7 @@ async function scaffoldFeaturePackage(
 
   const nativeFeatureRoot = `"use client";\n\nimport { useEffect, useRef } from "react";\nimport { createRoot } from "react-dom/client";\nimport App from ${JSON.stringify(appImportPath)};\nimport { detectedModules, nativeScaffoldReason } from "./GeneratedFeatureModules";\n${nativePlan.hasAppProviders ? "import { AppProviders } from \"./app/providers\";\n" : ""}${nativePlan.hasGlobalStyles ? "import \"./styles/globals.css\";\n" : ""}export default function GeneratedFeatureRoot() {\n  const mountRef = useRef<HTMLDivElement | null>(null);\n  const isolatedRootRef = useRef<ReturnType<typeof createRoot> | null>(null);\n  const mountGenerationRef = useRef(0);\n\n  useEffect(() => {\n    if (!mountRef.current) {\n      return;\n    }\n\n    mountGenerationRef.current += 1;\n    const generation = mountGenerationRef.current;\n\n    if (!isolatedRootRef.current) {\n      isolatedRootRef.current = createRoot(mountRef.current);\n    }\n\n    const root = isolatedRootRef.current;\n    root.render(\n      ${nativePlan.hasAppProviders ? "<AppProviders><App /></AppProviders>" : "<App />"}\n    );\n\n    return () => {\n      window.setTimeout(() => {\n        if (mountGenerationRef.current === generation && isolatedRootRef.current) {\n          isolatedRootRef.current.unmount();\n          isolatedRootRef.current = null;\n        }\n      }, 0);\n    };\n  }, []);\n\n  return (\n    <div className=\"-m-6 flex min-h-[calc(100dvh-4.25rem)] flex-col p-6\">\n      <p className=\"mb-3 text-xs text-slate-600\">{nativeScaffoldReason}</p>\n      {detectedModules.length > 0 ? (\n        <div className=\"mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white/80 p-3 text-xs text-slate-700\">\n          <span className=\"font-semibold text-slate-900\">Detected modules:</span>\n          {detectedModules.map((moduleLabel) => (\n            <span key={moduleLabel} className=\"rounded-full border border-slate-300 bg-white px-2 py-1\">\n              {moduleLabel}\n            </span>\n          ))}\n        </div>\n      ) : null}\n      <div ref={mountRef} className=\"min-h-0 flex-1\" />\n    </div>\n  );\n}\n`;
 
-  const featureRoot = `"use client";\n\nconst previewUrl: string | null = ${previewUrlLiteral};\nconst repoUrl = ${repoUrlLiteral};\nconst sourcePath = ${sourcePathLiteral};\nconst title = ${titleLiteral};\nconst readmeExcerpt: string | null = ${readmeLiteral};\n\nexport default function GeneratedFeatureRoot() {\n  return (\n    <div className=\"-m-6 flex h-[calc(100dvh-4.25rem)] min-h-[calc(100dvh-4.25rem)] w-[calc(100%+3rem)] flex-col bg-white\">\n      <main className=\"flex h-full min-h-0 w-full flex-1 flex-col\">\n        {previewUrl ? (\n          <div className=\"flex min-h-0 flex-1 overflow-hidden bg-white\">\n            <iframe\n              src={previewUrl}\n              title={title + " preview"}\n              style={{ width: \"100%\", height: \"100%\", border: 0, backgroundColor: \"#fff\" }}\n              loading=\"lazy\"\n              sandbox=\"allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads allow-presentation\"\n            />\n          </div>\n        ) : (\n          <section className=\"h-full w-full overflow-auto bg-white p-4\">\n            <p className=\"text-sm text-slate-700\">\n              No static index.html preview was detected for this repository. You can still use its code from the local folder and adapt it to a native React feature package.\n            </p>\n            {readmeExcerpt ? (\n              <pre className=\"mt-3 max-h-80 overflow-auto rounded-xl bg-white/85 p-3 text-xs leading-6 text-slate-700\">\n                {readmeExcerpt}\n              </pre>\n            ) : null}\n          </section>\n        )}\n      </main>\n    </div>\n  );\n}\n`;
+  const featureRoot = `"use client";\n\nimport { useEffect } from "react";\n\nconst previewUrl: string | null = ${previewUrlLiteral};\nconst repoUrl = ${repoUrlLiteral};\nconst sourcePath = ${sourcePathLiteral};\nconst title = ${titleLiteral};\nconst readmeExcerpt: string | null = ${readmeLiteral};\n\nexport default function GeneratedFeatureRoot() {\n  useEffect(() => {\n    if (previewUrl) {\n      window.location.assign(previewUrl);\n    }\n  }, []);\n\n  return (\n    <div className=\"-m-6 flex h-[calc(100dvh-4.25rem)] min-h-[calc(100dvh-4.25rem)] w-[calc(100%+3rem)] flex-col bg-white\">\n      <main className=\"flex h-full min-h-0 w-full flex-1 flex-col\">\n        {previewUrl ? (\n          <section className=\"flex h-full w-full flex-1 flex-col items-center justify-center gap-3 bg-white p-6 text-center\">\n            <p className=\"text-sm text-slate-700\">Opening interactive preview...</p>\n            <a\n              href={previewUrl}\n              className=\"rounded-lg border-2 border-emerald-500 bg-emerald-600 px-4 py-2 text-xs font-semibold text-white\"\n            >\n              Open Interactive Preview\n            </a>\n          </section>\n        ) : (\n          <section className=\"h-full w-full overflow-auto bg-white p-4\">\n            <p className=\"text-sm text-slate-700\">\n              No static index.html preview was detected for this repository. You can still use its code from the local folder and adapt it to a native React feature package.\n            </p>\n            {readmeExcerpt ? (\n              <pre className=\"mt-3 max-h-80 overflow-auto rounded-xl bg-white/85 p-3 text-xs leading-6 text-slate-700\">\n                {readmeExcerpt}\n              </pre>\n            ) : null}\n          </section>\n        )}\n      </main>\n    </div>\n  );\n}\n`;
 
   const indexSource = `import type { ToolboxPlugin } from "@toolbox/plugin-types";\nimport GeneratedFeatureRoot from "./GeneratedFeatureRoot";\n\nconst ${pluginSymbol}: ToolboxPlugin = {\n  id: ${JSON.stringify(`imported-${record.id}`)},\n  name: ${titleLiteral},\n  version: "0.1.0",\n  routes: [\n    {\n      path: ${JSON.stringify(`${routePath}/*`)},\n      element: <GeneratedFeatureRoot />,\n    },\n  ],\n  menu: [\n    {\n      label: ${titleLiteral},\n      to: ${JSON.stringify(routePath)},\n    },\n  ],\n};\n\nexport default ${pluginSymbol};\n`;
 
@@ -946,16 +2059,15 @@ export async function importRepository(repoUrl: string): Promise<ImportedRepoRec
     }
 
     let previewUrl: string | null = null;
+    let previewHealth: PreviewHealthCheckResult | undefined;
     if (previewRoot) {
+      previewUrl = await publishPreviewRoot(id, previewRoot);
       const previewPath = path.join(PUBLIC_ROOT, id);
-      await rm(previewPath, { recursive: true, force: true });
-      await copyDirectory(previewRoot, previewPath);
-      await normalizeCopiedPreviewIndex(previewPath);
-      previewUrl = `/imported/${id}/index.html`;
+      previewHealth = await runPreviewHealthCheck(previewPath);
     }
 
     const readmeExcerpt = await readReadme(tempRepoPath);
-    const lastSyncedCommit = await runGitRevParseHead(tempRepoPath);
+    const lastSyncedCommit = (await runGitRevParseHead(tempRepoPath)) ?? undefined;
 
     const record: ImportedRepoRecord = {
       id,
@@ -969,6 +2081,7 @@ export async function importRepository(repoUrl: string): Promise<ImportedRepoRec
       lastSyncedCommit,
       lastCheckedAt: new Date().toISOString(),
       lastUpdatedAt: new Date().toISOString(),
+      previewHealth,
     };
 
     records.unshift(record);
@@ -1008,8 +2121,10 @@ export async function checkAndUpdateImportedRepository(repoId: string): Promise<
   }
 
   if (repo.lastSyncedCommit && repo.lastSyncedCommit === remoteHead) {
+    const recoveredPreviewUrl = await recoverPreviewUrlForRepo(repo);
     const unchanged: ImportedRepoRecord = {
       ...repo,
+      previewUrl: recoveredPreviewUrl,
       lastCheckedAt: checkedAt,
     };
     await saveImportedRepos(records.map((record) => (record.id === repo.id ? unchanged : record)));
@@ -1045,12 +2160,11 @@ export async function checkAndUpdateImportedRepository(repoId: string): Promise<
     }
 
     let previewUrl = repo.previewUrl;
+    let previewHealth = repo.previewHealth;
     if (previewRoot) {
+      previewUrl = await publishPreviewRoot(repo.id, previewRoot);
       const previewPath = path.join(PUBLIC_ROOT, repo.id);
-      await rm(previewPath, { recursive: true, force: true });
-      await copyDirectory(previewRoot, previewPath);
-      await normalizeCopiedPreviewIndex(previewPath);
-      previewUrl = `/imported/${repo.id}/index.html`;
+      previewHealth = await runPreviewHealthCheck(previewPath);
     }
 
     const readmeExcerpt = (await readReadme(tempRepoPath)) ?? repo.readmeExcerpt;
@@ -1063,6 +2177,7 @@ export async function checkAndUpdateImportedRepository(repoId: string): Promise<
       lastSyncedCommit,
       lastCheckedAt: checkedAt,
       lastUpdatedAt: checkedAt,
+      previewHealth,
     };
 
     await saveImportedRepos(records.map((record) => (record.id === repo.id ? updatedRepo : record)));
@@ -1137,3 +2252,6 @@ export async function deleteImportedRepository(repoId: string): Promise<{ delete
 
   return { deletedId: repo.id };
 }
+
+
+

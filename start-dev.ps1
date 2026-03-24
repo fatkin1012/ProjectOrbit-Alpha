@@ -3,4 +3,4 @@ Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force -Er
 
 # Start Toolbox web app from workspace root using npm.cmd (PowerShell-safe).
 Set-Location $PSScriptRoot
-npm.cmd run dev --workspace=packages/toolbox -- --port 3002
+npm.cmd run dev --workspace=packages/toolbox

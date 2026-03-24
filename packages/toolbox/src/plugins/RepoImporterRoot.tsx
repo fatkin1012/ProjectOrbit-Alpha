@@ -23,7 +23,28 @@ type ImportedRepoRecord = {
   lastSyncedCommit?: string;
   lastCheckedAt?: string;
   lastUpdatedAt?: string;
+  previewHealth?: {
+    checkedAt: string;
+    passed: boolean;
+    score: number;
+    summary: string;
+    checks: Array<{
+      id: string;
+      passed: boolean;
+      detail: string;
+    }>;
+  };
 };
+
+function buildVersionedPreviewUrl(repo: ImportedRepoRecord): string | null {
+  if (!repo.previewUrl) {
+    return null;
+  }
+
+  const version = encodeURIComponent(repo.lastUpdatedAt ?? repo.importedAt);
+  const separator = repo.previewUrl.includes("?") ? "&" : "?";
+  return `${repo.previewUrl}${separator}v=${version}`;
+}
 
 function formatDate(value: string): string {
   const date = new Date(value);
@@ -119,7 +140,10 @@ export function RepoImporterRoot() {
         throw new Error(data.error || "Import failed.");
       }
 
-      setStatus(`Imported ${data.imported?.id ?? "repository"} successfully.`);
+      const healthText = data.imported?.previewHealth
+        ? ` Health: ${data.imported.previewHealth.passed ? "PASS" : "WARN"} (${data.imported.previewHealth.score}%).`
+        : "";
+      setStatus(`Imported ${data.imported?.id ?? "repository"} successfully.${healthText}`);
       setRepoUrl("");
       await refresh();
     } catch (importError) {
@@ -361,6 +385,14 @@ export function RepoImporterRoot() {
                 {repo.nativeScaffoldReason ? (
                   <p className="mt-1 text-xs text-slate-600">{repo.nativeScaffoldReason}</p>
                 ) : null}
+                {repo.previewHealth ? (
+                  <p className={`mt-1 text-xs font-semibold ${repo.previewHealth.passed ? "text-emerald-700" : "text-amber-700"}`}>
+                    Preview health: {repo.previewHealth.passed ? "PASS" : "WARN"} ({repo.previewHealth.score}%)
+                  </p>
+                ) : null}
+                {repo.previewHealth?.summary ? (
+                  <p className="mt-1 text-xs text-slate-600">{repo.previewHealth.summary}</p>
+                ) : null}
 
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
@@ -380,7 +412,7 @@ export function RepoImporterRoot() {
                   </button>
                   {repo.previewUrl ? (
                     <a
-                      href={repo.previewUrl}
+                      href={buildVersionedPreviewUrl(repo) ?? repo.previewUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="rounded-lg border-2 border-slate-300 bg-white/90 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
@@ -431,26 +463,15 @@ export function ImportedRepoViewer() {
   const { repoId } = useParams();
   const navigate = useNavigate();
   const { repos, loading, error } = useImportedRepos();
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const [embedState, setEmbedState] = useState<"loading" | "ready" | "failed">("loading");
 
   const repo = useMemo(() => repos.find((item) => item.id === repoId), [repos, repoId]);
+  const previewHref = useMemo(() => (repo ? buildVersionedPreviewUrl(repo) : null), [repo]);
 
   useEffect(() => {
-    if (!repo?.previewUrl) {
-      setEmbedState("failed");
-      return;
+    if (previewHref) {
+      window.location.assign(previewHref);
     }
-
-    setEmbedState("loading");
-    const timeout = window.setTimeout(() => {
-      setEmbedState("failed");
-    }, 8000);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [repo?.id, repo?.previewUrl]);
+  }, [previewHref]);
 
   useEffect(() => {
     logImportDebug("ImportedRepoViewer render", {
@@ -458,62 +479,9 @@ export function ImportedRepoViewer() {
       loading,
       hasError: Boolean(error),
       hasRepo: Boolean(repo),
-      previewUrl: repo?.previewUrl ?? null,
-      embedState,
+      previewUrl: previewHref,
     });
-  }, [repoId, loading, error, repo, embedState]);
-
-  const handleFrameLoad = () => {
-    logImportDebug("ImportedRepoViewer iframe load", {
-      repoId,
-      previewUrl: repo?.previewUrl ?? null,
-    });
-
-    window.setTimeout(() => {
-      const frame = iframeRef.current;
-      if (!frame) {
-        logImportDebug("ImportedRepoViewer iframe missing ref", { repoId });
-        setEmbedState("failed");
-        return;
-      }
-
-      try {
-        const doc = frame.contentDocument;
-        const body = doc?.body;
-        const root = body?.querySelector("#root, #app, #__next") as HTMLElement | null;
-
-        const textLength = body?.textContent?.replace(/\s+/g, "").length ?? 0;
-        const rootChildCount = root?.childElementCount ?? 0;
-        const bodyChildCount = body?.childElementCount ?? 0;
-
-        logImportDebug("ImportedRepoViewer iframe DOM stats", {
-          repoId,
-          frameUrl: frame.src,
-          textLength,
-          rootChildCount,
-          bodyChildCount,
-        });
-
-        if (textLength === 0 && rootChildCount === 0 && bodyChildCount <= 1) {
-          logImportDebug("ImportedRepoViewer iframe appears blank", {
-            repoId,
-            frameUrl: frame.src,
-          });
-          setEmbedState("failed");
-          return;
-        }
-      } catch (inspectError) {
-        // If browser blocks frame inspection, still keep embedded view available.
-        logImportDebug("ImportedRepoViewer iframe inspection blocked", {
-          repoId,
-          message: inspectError instanceof Error ? inspectError.message : String(inspectError),
-        });
-      }
-
-      logImportDebug("ImportedRepoViewer iframe marked ready", { repoId });
-      setEmbedState("ready");
-    }, 600);
-  };
+  }, [repoId, loading, error, repo, previewHref]);
 
   if (loading) {
     return <div style={{ padding: "2rem" }}>Loading imported project...</div>;
@@ -540,7 +508,7 @@ export function ImportedRepoViewer() {
     );
   }
 
-  if (!repo.previewUrl) {
+  if (!previewHref) {
     return (
       <div className="playful-bg min-h-dvh px-4 py-8">
         <div className="mx-auto w-full max-w-4xl rounded-2xl bg-white/85 p-6">
@@ -573,12 +541,12 @@ export function ImportedRepoViewer() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <a
-              href={repo.previewUrl}
+              href={previewHref}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg border-2 border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-700"
+              className="rounded-lg border-2 border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
             >
-              Open Static Preview
+              Open In New Tab
             </a>
             <button
               type="button"
@@ -589,42 +557,20 @@ export function ImportedRepoViewer() {
             </button>
           </div>
         </div>
-
-        {embedState === "failed" ? (
-          <section className="glass-card rounded-2xl border border-emerald-100 p-5">
-            <h3 className="text-base font-semibold text-slate-900">Embedded preview could not be rendered.</h3>
-            <p className="mt-2 text-sm text-slate-700">
-              This repository may require a build step or block iframe embedding. Use Open Static Preview to open it directly.
-            </p>
-            <div className="mt-3">
-              <a
-                href={repo.previewUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex rounded-lg border-2 border-emerald-500 bg-emerald-600 px-3 py-2 text-xs font-semibold text-white"
-              >
-                Open Static Preview
-              </a>
-            </div>
-          </section>
-        ) : (
-          <div className="glass-card overflow-hidden rounded-2xl border border-emerald-100">
-            <iframe
-              ref={iframeRef}
-              src={repo.previewUrl}
-              onLoad={handleFrameLoad}
-              onError={() => {
-                logImportDebug("ImportedRepoViewer iframe error event", {
-                  repoId,
-                  previewUrl: repo.previewUrl,
-                });
-                setEmbedState("failed");
-              }}
-              title={`${repo.name} preview`}
-              style={{ width: "100%", height: "80vh", border: 0, backgroundColor: "#fff" }}
-            />
+        <section className="glass-card rounded-2xl border border-emerald-100 p-5">
+          <h3 className="text-base font-semibold text-slate-900">Opening interactive preview...</h3>
+          <p className="mt-2 text-sm text-slate-700">
+            Redirecting to the preview page in this tab. A back button will appear on the preview page for easy navigation.
+          </p>
+          <div className="mt-3">
+            <a
+              href={previewHref}
+              className="inline-flex rounded-lg border-2 border-emerald-500 bg-emerald-600 px-3 py-2 text-xs font-semibold text-white"
+            >
+              Open Interactive Preview
+            </a>
           </div>
-        )}
+        </section>
       </div>
     </div>
   );

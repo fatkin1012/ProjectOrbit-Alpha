@@ -945,6 +945,7 @@ async function normalizeCopiedPreviewIndex(previewPath: string): Promise<void> {
 
   const previewId = path.basename(previewPath);
   const previewBasePath = `/imported/${previewId}`;
+  const enableSapDebugRuntime = /sap-local-wiki/i.test(previewId);
 
   let html = await readFile(indexPath, "utf8");
 
@@ -957,21 +958,23 @@ async function normalizeCopiedPreviewIndex(previewPath: string): Promise<void> {
   // Ensure runtime chunk loading stays under /imported/<id>/ rather than app root.
   html = html.replace(/(["'])\/_next\//g, `$1${previewBasePath}/_next/`);
 
-  const localStorageGuard = `<script id="toolbox-localstorage-guard">(function(){try{var key="sap-wiki-cases";var raw=window.localStorage.getItem(key);if(!raw){return;}var parsed=JSON.parse(raw);if(!Array.isArray(parsed)){window.localStorage.removeItem(key);}}catch(_error){try{window.localStorage.removeItem("sap-wiki-cases");}catch(_ignore){}}})();</script>`;
-  const earlyProbeScript = `<script id="toolbox-early-probe">(function(){if(window.__toolboxEarlyProbeInstalled){return;}window.__toolboxEarlyProbeInstalled=true;window.__toolboxEarlyLogs=window.__toolboxEarlyLogs||[];window.__toolboxEarlyLog=function(msg){try{window.__toolboxEarlyLogs.push("[EARLY] "+msg);}catch(_e){}};window.__toolboxEarlyLog("probe-installed");window.addEventListener("error",function(e){window.__toolboxEarlyLog("error:"+(e.message||"unknown")+" @ "+(e.filename||"unknown")+":"+(e.lineno||0)+":"+(e.colno||0));},true);window.addEventListener("unhandledrejection",function(e){var reason=e.reason instanceof Error?(e.reason.stack||e.reason.message):String(e.reason);window.__toolboxEarlyLog("rejection:"+reason);},true);var originalAdd=EventTarget.prototype.addEventListener;EventTarget.prototype.addEventListener=function(type,listener,options){if(type==="click"&&(this===document||this===window||this===document.body||this===document.documentElement)){window.__toolboxEarlyLog("addEventListener(click) on "+(this===document?"document":this===window?"window":this===document.body?"body":"documentElement"));}return originalAdd.call(this,type,listener,options);};document.addEventListener("DOMContentLoaded",function(){window.__toolboxEarlyLog("DOMContentLoaded");});window.addEventListener("load",function(){window.__toolboxEarlyLog("window-load");});})();</script>`;
-  if (html.includes("<head>")) {
-    if (!html.includes("id=\"toolbox-early-probe\"")) {
-      html = html.replace("<head>", `<head>${earlyProbeScript}`);
-    }
-    if (!html.includes("id=\"toolbox-localstorage-guard\"")) {
-      html = html.replace("<head>", `<head>${localStorageGuard}`);
-    }
-  } else {
-    if (!html.includes("id=\"toolbox-early-probe\"")) {
-      html = earlyProbeScript + html;
-    }
-    if (!html.includes("id=\"toolbox-localstorage-guard\"")) {
-      html = localStorageGuard + html;
+  if (enableSapDebugRuntime) {
+    const localStorageGuard = `<script id="toolbox-localstorage-guard">(function(){try{var key="sap-wiki-cases";var raw=window.localStorage.getItem(key);if(!raw){return;}var parsed=JSON.parse(raw);if(!Array.isArray(parsed)){window.localStorage.removeItem(key);}}catch(_error){try{window.localStorage.removeItem("sap-wiki-cases");}catch(_ignore){}}})();</script>`;
+    const earlyProbeScript = `<script id="toolbox-early-probe">(function(){if(window.__toolboxEarlyProbeInstalled){return;}window.__toolboxEarlyProbeInstalled=true;window.__toolboxEarlyLogs=window.__toolboxEarlyLogs||[];window.__toolboxEarlyLog=function(msg){try{window.__toolboxEarlyLogs.push("[EARLY] "+msg);}catch(_e){}};window.__toolboxEarlyLog("probe-installed");window.addEventListener("error",function(e){window.__toolboxEarlyLog("error:"+(e.message||"unknown")+" @ "+(e.filename||"unknown")+":"+(e.lineno||0)+":"+(e.colno||0));},true);window.addEventListener("unhandledrejection",function(e){var reason=e.reason instanceof Error?(e.reason.stack||e.reason.message):String(e.reason);window.__toolboxEarlyLog("rejection:"+reason);},true);var originalAdd=EventTarget.prototype.addEventListener;EventTarget.prototype.addEventListener=function(type,listener,options){if(type==="click"&&(this===document||this===window||this===document.body||this===document.documentElement)){window.__toolboxEarlyLog("addEventListener(click) on "+(this===document?"document":this===window?"window":this===document.body?"body":"documentElement"));}return originalAdd.call(this,type,listener,options);};document.addEventListener("DOMContentLoaded",function(){window.__toolboxEarlyLog("DOMContentLoaded");});window.addEventListener("load",function(){window.__toolboxEarlyLog("window-load");});})();</script>`;
+    if (html.includes("<head>")) {
+      if (!html.includes("id=\"toolbox-early-probe\"")) {
+        html = html.replace("<head>", `<head>${earlyProbeScript}`);
+      }
+      if (!html.includes("id=\"toolbox-localstorage-guard\"")) {
+        html = html.replace("<head>", `<head>${localStorageGuard}`);
+      }
+    } else {
+      if (!html.includes("id=\"toolbox-early-probe\"")) {
+        html = earlyProbeScript + html;
+      }
+      if (!html.includes("id=\"toolbox-localstorage-guard\"")) {
+        html = localStorageGuard + html;
+      }
     }
   }
 
@@ -1025,6 +1028,18 @@ document.getElementById("toolbox-back-button").addEventListener("click", functio
     } else {
       // Fallback: append to end of document
       html += floatingButtonCode;
+    }
+  }
+
+  // For all non-SAP previews, inject localStorage availability check
+  if (!enableSapDebugRuntime && !html.includes("id=\"toolbox-storage-check\"")) {
+    const storageCheckCode = `<script id="toolbox-storage-check">(function(){console.log("[Toolbox] Checking localStorage availability...");try{window.localStorage.setItem("__toolbox_test__","1");var val=window.localStorage.getItem("__toolbox_test__");window.localStorage.removeItem("__toolbox_test__");console.log("[Toolbox] localStorage OK - read/write working");}catch(e){console.error("[Toolbox] localStorage unavailable:",e.message);}})();</script>`;
+    if (html.includes("</body>")) {
+      html = html.replace("</body>", storageCheckCode + "</body>");
+    } else if (html.includes("</html>")) {
+      html = html.replace("</html>", storageCheckCode + "</html>");
+    } else {
+      html += storageCheckCode;
     }
   }
 
@@ -1205,7 +1220,7 @@ document.getElementById("toolbox-back-button").addEventListener("click", functio
       }
       var rows = Array.prototype.map.call(list.querySelectorAll("li"), function (node) { return node.textContent || ""; });
       try {
-        await navigator.clipboard.writeText(rows.join("\n"));
+        await navigator.clipboard.writeText(rows.join("\\n"));
         addLine("ok", "Copied debug log to clipboard");
       } catch (_copyErr) {
         addLine("warn", "Clipboard copy failed");
@@ -1246,7 +1261,7 @@ document.getElementById("toolbox-back-button").addEventListener("click", functio
     }
     var tag = el.tagName.toLowerCase();
     var id = el.id ? "#" + el.id : "";
-    var cls = el.className && typeof el.className === "string" ? ("." + el.className.split(/\s+/).filter(Boolean).slice(0, 2).join(".")) : "";
+    var cls = el.className && typeof el.className === "string" ? ("." + el.className.split(/\\s+/).filter(Boolean).slice(0, 2).join(".")) : "";
     addLine("ok", "click " + tag + id + cls);
   }, true);
 
@@ -1759,7 +1774,7 @@ document.getElementById("toolbox-back-button").addEventListener("click", functio
 </script>
 `;
 
-  if (!html.includes("id=\"toolbox-debug-toggle\"")) {
+  if (enableSapDebugRuntime && !html.includes("id=\"toolbox-debug-toggle\"")) {
     if (html.includes("</body>")) {
       html = html.replace("</body>", debugConsoleCode + "</body>");
     } else if (html.includes("</html>")) {

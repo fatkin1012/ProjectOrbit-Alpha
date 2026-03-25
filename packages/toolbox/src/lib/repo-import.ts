@@ -16,7 +16,7 @@ export type ImportedRepoRecord = {
   activatedRoute?: string;
   activatedAt?: string;
   nativeTransformLevel?: NativeTransformLevel;
-  nativeScaffoldMode?: "native" | "iframe";
+  nativeScaffoldMode?: "native" | "iframe" | "static";
   nativeScaffoldReason?: string;
   nativeRiskScore?: number;
   nativeRiskBand?: "low" | "medium" | "high";
@@ -639,12 +639,48 @@ async function tryBuildPreviewRoot(repoPath: string): Promise<string | null> {
     return null;
   }
 
-  try {
-    if (!(await exists(path.join(repoPath, "node_modules")))) {
-      await runCommand(resolveCommandBinary("npm"), ["install", "--no-audit", "--no-fund"], repoPath, 360_000);
+  const installPreviewDependencies = async (): Promise<void> => {
+    const hasLockFile = await exists(path.join(repoPath, "package-lock.json"));
+    if (hasLockFile) {
+      try {
+        await runCommand(
+          resolveCommandBinary("npm"),
+          ["ci", "--include=dev", "--no-audit", "--no-fund"],
+          repoPath,
+          360_000,
+        );
+      } catch {
+        await runCommand(
+          resolveCommandBinary("npm"),
+          ["install", "--include=dev", "--no-audit", "--no-fund"],
+          repoPath,
+          360_000,
+        );
+      }
+      return;
     }
 
-    await runCommand(resolveCommandBinary("npm"), ["run", "build"], repoPath, 360_000);
+    await runCommand(
+      resolveCommandBinary("npm"),
+      ["install", "--include=dev", "--no-audit", "--no-fund"],
+      repoPath,
+      360_000,
+    );
+  };
+
+  try {
+    if (!(await exists(path.join(repoPath, "node_modules")))) {
+      // First-time install for imported repository.
+      await installPreviewDependencies();
+    }
+
+    try {
+      await runCommand(resolveCommandBinary("npm"), ["run", "build"], repoPath, 360_000);
+    } catch {
+      // node_modules can exist but still be incomplete/stale; force reinstall and retry once.
+      await installPreviewDependencies();
+      await runCommand(resolveCommandBinary("npm"), ["run", "build"], repoPath, 360_000);
+    }
 
     let previewRoot = await findPreviewRoot(repoPath);
     if (previewRoot && (await isStaticPreviewCompatible(previewRoot))) {
@@ -687,11 +723,11 @@ async function tryBuildPreviewRoot(repoPath: string): Promise<string | null> {
 
 async function findPreviewRoot(repoPath: string): Promise<string | null> {
   const candidates = [
-    repoPath,
     path.join(repoPath, "dist"),
     path.join(repoPath, "build"),
     path.join(repoPath, "out"),
     path.join(repoPath, "public"),
+    repoPath,
   ];
   for (const candidate of candidates) {
     if (await exists(path.join(candidate, "index.html"))) {
@@ -2203,23 +2239,23 @@ export async function activateImportedRepository(
     throw new Error("Imported repository not found.");
   }
 
-  if (repo.activatedFeaturePackage) {
-    throw new Error(`Repository already activated as ${repo.activatedFeaturePackage}.`);
+  if (repo.activatedRoute) {
+    throw new Error(`Repository already activated at ${repo.activatedRoute}.`);
   }
 
   const transformLevel = normalizeNativeTransformLevel(requestedTransformLevel);
-  const { packageName, routePath, nativePlan } = await scaffoldFeaturePackage(repo, transformLevel);
+  const routePath = `/repo-${repo.id}`;
 
   const updatedRepo: ImportedRepoRecord = {
     ...repo,
-    activatedFeaturePackage: packageName,
+    activatedFeaturePackage: undefined,
     activatedRoute: routePath,
     activatedAt: new Date().toISOString(),
     nativeTransformLevel: transformLevel,
-    nativeScaffoldMode: nativePlan.shouldUseNative ? "native" : "iframe",
-    nativeScaffoldReason: nativePlan.reason,
-    nativeRiskScore: nativePlan.riskScore,
-    nativeRiskBand: nativePlan.riskBand,
+    nativeScaffoldMode: "static",
+    nativeScaffoldReason: "Decoupled static mode: route is generated from imported repo metadata.",
+    nativeRiskScore: 0,
+    nativeRiskBand: "low",
   };
 
   const nextRecords = records.map((record) => (record.id === repo.id ? updatedRepo : record));
@@ -2240,11 +2276,8 @@ export async function deleteImportedRepository(repoId: string): Promise<{ delete
   await rm(path.join(PUBLIC_ROOT, repo.id), { recursive: true, force: true });
 
   if (repo.activatedFeaturePackage) {
-    const pluginSymbol = `feature${toPascalCase(repo.id)}Plugin`;
     const featurePackageDir = path.resolve(process.cwd(), "..", repo.activatedFeaturePackage);
-
     await rm(featurePackageDir, { recursive: true, force: true });
-    await unregisterGeneratedPlugin(repo.activatedFeaturePackage, pluginSymbol);
   }
 
   const nextRecords = records.filter((record) => record.id !== repo.id);

@@ -2,6 +2,7 @@
 @source "../**/*.{js,ts,jsx,tsx}";
 @source "../../../features-project/src/**/*.{js,ts,jsx,tsx}";
 @source "../../../features-finance/src/**/*.{js,ts,jsx,tsx}";
+@source "../../../features-*/src/**/*.{js,ts,jsx,tsx}";
 
 :root {
   --background: #f4fff6;

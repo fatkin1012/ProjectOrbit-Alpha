@@ -1,6 +1,6 @@
+import React, { useEffect } from "react";
 import type { ToolboxPlugin } from "./plugin-types";
 import repoImporterPlugin from "./plugins/repo-importer";
-import { generatedPlugins } from "./plugins/generated-imports";
 
 /**
  * Plugin Registry
@@ -10,6 +10,96 @@ import { generatedPlugins } from "./plugins/generated-imports";
 
 let registeredPlugins: ToolboxPlugin[] = [];
 let pluginsInitialized = false;
+
+type ImportedRepoRecord = {
+  id: string;
+  name: string;
+  previewUrl: string | null;
+  importedAt: string;
+  lastUpdatedAt?: string;
+  activatedRoute?: string;
+};
+
+function buildVersionedPreviewUrl(repo: ImportedRepoRecord): string | null {
+  if (!repo.previewUrl) {
+    return null;
+  }
+
+  const version = encodeURIComponent(repo.lastUpdatedAt ?? repo.importedAt);
+  const separator = repo.previewUrl.includes("?") ? "&" : "?";
+  return `${repo.previewUrl}${separator}v=${version}`;
+}
+
+function StaticRepoRoute(props: { previewUrl: string | null; name: string }) {
+  const { previewUrl, name } = props;
+
+  useEffect(() => {
+    if (previewUrl) {
+      window.location.assign(previewUrl);
+    }
+  }, [previewUrl]);
+
+  if (!previewUrl) {
+    return React.createElement(
+      "div",
+      { style: { padding: "1rem", color: "#475569" } },
+      `No static preview available for ${name}.`,
+    );
+  }
+
+  return React.createElement(
+    "div",
+    { style: { padding: "1rem", color: "#475569" } },
+    `Opening static preview for ${name}...`,
+  );
+}
+
+async function loadImportedRepoPlugins(): Promise<ToolboxPlugin[]> {
+  try {
+    const response = await fetch("/api/repo-import", {
+      method: "GET",
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache" },
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = (await response.json()) as { repos?: ImportedRepoRecord[] };
+    const repos = Array.isArray(data.repos) ? data.repos : [];
+
+    return repos
+      .filter((repo) => Boolean(repo.previewUrl))
+      .map((repo) => {
+        const routePath = repo.activatedRoute || `/repo-${repo.id}`;
+        const previewUrl = buildVersionedPreviewUrl(repo);
+
+        return {
+          id: `imported-static-${repo.id}`,
+          name: repo.name,
+          version: "static-preview",
+          routes: [
+            {
+              path: `${routePath}/*`,
+              element: React.createElement(StaticRepoRoute, {
+                previewUrl,
+                name: repo.name,
+              }),
+            },
+          ],
+          menu: [
+            {
+              label: repo.name,
+              to: routePath,
+            },
+          ],
+        } satisfies ToolboxPlugin;
+      });
+  } catch {
+    return [];
+  }
+}
 
 /**
  * 取得所有已註冊的外掛程式
@@ -40,7 +130,8 @@ export async function initializePlugins(): Promise<void> {
 
   try {
     registerPlugin(repoImporterPlugin);
-    generatedPlugins.forEach((plugin) => {
+    const importedRepoPlugins = await loadImportedRepoPlugins();
+    importedRepoPlugins.forEach((plugin) => {
       registerPlugin(plugin);
     });
 

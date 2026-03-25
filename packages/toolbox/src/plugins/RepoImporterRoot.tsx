@@ -16,7 +16,7 @@ type ImportedRepoRecord = {
   activatedRoute?: string;
   activatedAt?: string;
   nativeTransformLevel?: "strict" | "balanced" | "safe";
-  nativeScaffoldMode?: "native" | "iframe";
+  nativeScaffoldMode?: "native" | "iframe" | "static";
   nativeScaffoldReason?: string;
   nativeRiskScore?: number;
   nativeRiskBand?: "low" | "medium" | "high";
@@ -174,9 +174,7 @@ export function RepoImporterRoot() {
         throw new Error(data.error || "Feature activation failed.");
       }
 
-      setStatus(
-        `Activated ${data.activated?.name ?? repoId} as ${data.activated?.activatedFeaturePackage ?? "feature package"} using ${transformLevel} mode. Restart dev server to load it.`,
-      );
+      setStatus(`Activated ${data.activated?.name ?? repoId} as decoupled static route.`);
       await refresh();
       if (data.activated?.activatedRoute) {
         navigate(data.activated.activatedRoute);
@@ -370,9 +368,9 @@ export function RepoImporterRoot() {
                 {repo.lastSyncedCommit ? (
                   <p className="mt-1 font-mono text-[11px] text-slate-500">Commit: {repo.lastSyncedCommit.slice(0, 10)}</p>
                 ) : null}
-                {repo.activatedFeaturePackage ? (
+                {repo.activatedRoute ? (
                   <p className="mt-1 text-xs font-semibold text-emerald-700">
-                    Active native feature: {repo.activatedFeaturePackage}
+                    Active static route: {repo.activatedRoute}
                   </p>
                 ) : null}
                 {repo.nativeScaffoldMode ? (
@@ -422,15 +420,15 @@ export function RepoImporterRoot() {
                   ) : null}
                   <button
                     type="button"
-                    disabled={Boolean(repo.activatedFeaturePackage) || activatingRepoId === repo.id}
+                    disabled={Boolean(repo.activatedRoute) || activatingRepoId === repo.id}
                     onClick={() => handleActivate(repo.id)}
                     className="rounded-lg border-2 border-emerald-500 bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {repo.activatedFeaturePackage
-                      ? "Native Feature Ready"
+                    {repo.activatedRoute
+                      ? "Static Route Ready"
                       : activatingRepoId === repo.id
                         ? "Activating..."
-                        : "Activate As Native Feature"}
+                        : "Activate Static Route"}
                   </button>
                   {repo.activatedRoute ? (
                     <button
@@ -438,7 +436,7 @@ export function RepoImporterRoot() {
                       onClick={() => navigate(repo.activatedRoute as string)}
                       className="rounded-lg border-2 border-slate-300 bg-white/90 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
                     >
-                      Open Native Feature
+                      Open Static Route
                     </button>
                   ) : null}
                   <button
@@ -462,7 +460,10 @@ export function RepoImporterRoot() {
 export function ImportedRepoViewer() {
   const { repoId } = useParams();
   const navigate = useNavigate();
-  const { repos, loading, error } = useImportedRepos();
+  const { repos, loading, error, refresh } = useImportedRepos();
+  const [repairing, setRepairing] = useState(false);
+  const [repairMessage, setRepairMessage] = useState<string | null>(null);
+  const [repairError, setRepairError] = useState<string | null>(null);
 
   const repo = useMemo(() => repos.find((item) => item.id === repoId), [repos, repoId]);
   const previewHref = useMemo(() => (repo ? buildVersionedPreviewUrl(repo) : null), [repo]);
@@ -482,6 +483,48 @@ export function ImportedRepoViewer() {
       previewUrl: previewHref,
     });
   }, [repoId, loading, error, repo, previewHref]);
+
+  const handleRepairPreview = async () => {
+    if (!repo) {
+      return;
+    }
+
+    try {
+      setRepairing(true);
+      setRepairError(null);
+      setRepairMessage(null);
+
+      const response = await fetch("/api/repo-import/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repoId: repo.id }),
+      });
+
+      const data = (await response.json()) as {
+        repo?: ImportedRepoRecord;
+        updated?: boolean;
+        upToDate?: boolean;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to rebuild preview.");
+      }
+
+      const nextPreview = data.repo ? buildVersionedPreviewUrl(data.repo) : null;
+      if (nextPreview) {
+        window.location.assign(nextPreview);
+        return;
+      }
+
+      await refresh();
+      setRepairMessage("Build completed, but no static preview index.html was generated for this repo.");
+    } catch (repairErr) {
+      setRepairError(repairErr instanceof Error ? repairErr.message : "Failed to rebuild preview.");
+    } finally {
+      setRepairing(false);
+    }
+  };
 
   if (loading) {
     return <div style={{ padding: "2rem" }}>Loading imported project...</div>;
@@ -517,8 +560,18 @@ export function ImportedRepoViewer() {
             This repository was downloaded to {repo.sourcePath}, but no static index.html preview was detected.
           </p>
           <p className="mt-2 text-sm text-slate-700">
-            You can still use the code locally from that folder and wire it into a Toolbox feature package.
+            Try rebuilding preview artifacts once. If static output is generated, this page will auto-open it.
           </p>
+          {repairMessage ? <p className="mt-2 text-sm text-amber-700">{repairMessage}</p> : null}
+          {repairError ? <p className="mt-2 text-sm text-rose-700">{repairError}</p> : null}
+          <button
+            type="button"
+            onClick={handleRepairPreview}
+            disabled={repairing}
+            className="mt-3 rounded-lg border-2 border-emerald-500 bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+          >
+            {repairing ? "Rebuilding Preview..." : "Rebuild Preview Now"}
+          </button>
           <button
             type="button"
             onClick={() => navigate("/import")}

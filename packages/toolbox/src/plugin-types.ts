@@ -9,6 +9,7 @@ export type MenuRecord = {
   label: string;
   to: string;
   icon?: string;
+  category?: string;
 };
 
 export interface ToolboxPlugin {

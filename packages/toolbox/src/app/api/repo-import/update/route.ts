@@ -13,6 +13,7 @@ export async function POST(request: Request) {
     }
 
     const result = await checkAndUpdateImportedRepository(repoId);
+    console.log(`[RepoUpdate] ${repoId} trace: ${result.trace.join(" -> ")}`);
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to check repository updates.";

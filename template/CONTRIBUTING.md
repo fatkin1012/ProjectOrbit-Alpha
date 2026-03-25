@@ -1,14 +1,14 @@
-# CONTRIBUTING — Toolbox Import Contract (TypeScript Projects)
+# CONTRIBUTING — ProjectOrbit Import Contract (TypeScript Projects)
 
-Use this guide when preparing any external TypeScript project to be imported into Toolbox.
+Use this guide when preparing any external TypeScript project to be imported into ProjectOrbit.
 
-Current Toolbox behavior is static-preview-first:
+Current ProjectOrbit behavior is static-preview-first:
 - It imports repository source code.
 - It runs the project build.
 - It looks for a static `index.html` in build output.
-- It serves that output under Toolbox route.
+- It serves that output under ProjectOrbit route.
 
-If the project does not satisfy this contract, Toolbox shows "no static preview detected".
+If the project does not satisfy this contract, ProjectOrbit shows "no static preview detected".
 
 ## 1) Required project structure
 
@@ -62,16 +62,16 @@ Projects requiring backend APIs:
 - Provide mock/fallback behavior for preview mode, or
 - Gracefully render error/retry UI instead of blank screen.
 
-## 5) UI/UX compatibility rules for Toolbox preview
+## 5) UI/UX compatibility rules for ProjectOrbit preview
 
-To ensure imported UI can actually be used inside Toolbox:
+To ensure imported UI can actually be used inside ProjectOrbit:
 - First screen must render meaningful content quickly (avoid full-page hard-block).
 - On API/auth failure, show actionable fallback and retry.
 - Keep mobile/desktop responsive; no horizontal overflow on common breakpoints.
 - Avoid hover-only interactions for critical actions.
 - Keep touch targets usable (about 44px minimum height/width).
 - Ensure text contrast and readable typography.
-- Preserve navigation escape path (user should always be able to go back to Toolbox).
+- Preserve navigation escape path (user should always be able to go back to ProjectOrbit).
 
 ## 6) Pre-import self-check (copy/paste)
 
@@ -99,4 +99,4 @@ Then manually confirm:
 - `index.html` exists in that output
 - HTML does not use `/src/` runtime entry
 
-Keep this file in every new project template to make Toolbox imports predictable.
+Keep this file in every new project template to make ProjectOrbit imports predictable.

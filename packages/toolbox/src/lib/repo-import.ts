@@ -7,6 +7,7 @@ export type ImportedRepoRecord = {
   id: string;
   name: string;
   owner: string;
+  category?: string;
   repoUrl: string;
   importedAt: string;
   sourcePath: string;
@@ -44,6 +45,7 @@ export type UpdateImportedRepoResult = {
   remoteHead: string | null;
   upToDate: boolean;
   updated: boolean;
+  trace: string[];
 };
 
 export type NativeTransformLevel = "strict" | "balanced" | "safe";
@@ -53,6 +55,20 @@ const SOURCE_ROOT = path.resolve(process.cwd(), "..", "imported-repos");
 const PUBLIC_ROOT = path.join(process.cwd(), "public", "imported");
 const GENERATED_PLUGINS_FILE = path.join(process.cwd(), "src", "plugins", "generated-imports.ts");
 const NEXT_CONFIG_FILE = path.join(process.cwd(), "next.config.ts");
+
+function normalizeCategory(value: string | undefined): string {
+  const fallback = "Imported";
+  if (!value) {
+    return fallback;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+
+  return trimmed.slice(0, 40);
+}
 
 function sanitizeSegment(value: string): string {
   return value
@@ -109,6 +125,48 @@ async function exists(targetPath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function removeDirectoryWithRetry(targetPath: string): Promise<void> {
+  const maxAttempts = 6;
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await rm(targetPath, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      lastError = error;
+      const code =
+        error && typeof error === "object" && "code" in error
+          ? String((error as { code?: unknown }).code ?? "")
+          : "";
+      const retryable = code === "EBUSY" || code === "EPERM" || code === "ENOTEMPTY";
+      if (!retryable || attempt === maxAttempts) {
+        break;
+      }
+
+      const waitMs = 150 * attempt;
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+
+  const code =
+    lastError && typeof lastError === "object" && "code" in lastError
+      ? String((lastError as { code?: unknown }).code ?? "")
+      : "";
+
+  if (code === "EBUSY" || code === "EPERM") {
+    throw new Error(
+      `Cannot delete folder because it is in use: ${targetPath}. Close terminals/editors using this folder and try again.`,
+    );
+  }
+
+  if (lastError instanceof Error) {
+    throw lastError;
+  }
+
+  throw new Error(`Failed to delete folder: ${targetPath}`);
 }
 
 async function copyDirectory(source: string, destination: string): Promise<void> {
@@ -304,6 +362,8 @@ async function runCommand(
         CI: "1",
         NEXT_TELEMETRY_DISABLED: "1",
       },
+      // Use shell on Windows to avoid intermittent spawn EINVAL for npm.cmd/npx.cmd.
+      shell: process.platform === "win32",
       stdio: ["ignore", "pipe", "pipe"],
     });
 
@@ -317,9 +377,14 @@ async function runCommand(
       reject(new Error(`Command timed out: ${command} ${args.join(" ")}`));
     }, timeoutMs);
 
-    child.on("error", () => {
+    child.on("error", (error) => {
       clearTimeout(timeout);
-      reject(new Error(`Failed to run command: ${command}`));
+      const code =
+        error && typeof error === "object" && "code" in error
+          ? String((error as { code?: unknown }).code ?? "")
+          : "";
+      const message = error instanceof Error ? error.message : String(error);
+      reject(new Error(`Failed to run command: ${command} (${code || "no-code"}) ${message}`));
     });
 
     child.on("close", (code) => {
@@ -635,89 +700,156 @@ async function disableUnsupportedNextExportRoutes(repoPath: string): Promise<voi
 
 async function tryBuildPreviewRoot(repoPath: string): Promise<string | null> {
   const manifest = await readPackageManifest(repoPath);
-  if (!manifest?.scripts?.build) {
+  const hasBuildScript = Boolean(manifest?.scripts?.build);
+  const hasViteDependency = hasDependency(manifest ?? {}, "vite");
+  if (!hasBuildScript && !hasViteDependency) {
+    console.log("[Preview] No build script found in package.json");
     return null;
   }
 
-  const installPreviewDependencies = async (): Promise<void> => {
+  const diagnostics: string[] = [];
+  
+  const installPreviewDependencies = async (isRetry = false): Promise<void> => {
     const hasLockFile = await exists(path.join(repoPath, "package-lock.json"));
+    const nodeModulesExists = await exists(path.join(repoPath, "node_modules"));
+    
+    diagnostics.push(`[Preview] Installing dependencies - lockFile=${hasLockFile}, nodeModulesExists=${nodeModulesExists}, isRetry=${isRetry}`);
+    
     if (hasLockFile) {
       try {
+        diagnostics.push(`[Preview] Running npm ci...`);
         await runCommand(
           resolveCommandBinary("npm"),
           ["ci", "--include=dev", "--no-audit", "--no-fund"],
           repoPath,
-          360_000,
+          600_000, // increased timeout from 360s to 600s for first install
         );
-      } catch {
+        diagnostics.push(`[Preview] npm ci succeeded`);
+      } catch (err) {
+        diagnostics.push(`[Preview] npm ci failed: ${err instanceof Error ? err.message : String(err)}`);
+        diagnostics.push(`[Preview] Falling back to npm install...`);
         await runCommand(
           resolveCommandBinary("npm"),
           ["install", "--include=dev", "--no-audit", "--no-fund"],
           repoPath,
-          360_000,
+          600_000,
         );
+        diagnostics.push(`[Preview] npm install succeeded`);
       }
       return;
     }
 
+    diagnostics.push(`[Preview] Running npm install...`);
     await runCommand(
       resolveCommandBinary("npm"),
       ["install", "--include=dev", "--no-audit", "--no-fund"],
       repoPath,
-      360_000,
+      600_000,
     );
+    diagnostics.push(`[Preview] npm install succeeded`);
   };
 
   try {
     if (!(await exists(path.join(repoPath, "node_modules")))) {
-      // First-time install for imported repository.
+      diagnostics.push(`[Preview] node_modules missing - first-time install`);
       await installPreviewDependencies();
     }
 
-    try {
-      await runCommand(resolveCommandBinary("npm"), ["run", "build"], repoPath, 360_000);
-    } catch {
-      // node_modules can exist but still be incomplete/stale; force reinstall and retry once.
-      await installPreviewDependencies();
-      await runCommand(resolveCommandBinary("npm"), ["run", "build"], repoPath, 360_000);
-    }
+    const runPrimaryBuild = async (): Promise<void> => {
+      if (!hasBuildScript) {
+        diagnostics.push("[Preview] No build script; skipping npm run build");
+        return;
+      }
+
+      try {
+        diagnostics.push(`[Preview] Running npm run build...`);
+        await runCommand(resolveCommandBinary("npm"), ["run", "build"], repoPath, 360_000);
+        diagnostics.push(`[Preview] npm run build succeeded`);
+      } catch (err) {
+        diagnostics.push(`[Preview] First build attempt failed: ${err instanceof Error ? err.message : String(err)}`);
+        diagnostics.push(`[Preview] Reinstalling dependencies and retrying build...`);
+        await installPreviewDependencies(true);
+        await runCommand(resolveCommandBinary("npm"), ["run", "build"], repoPath, 360_000);
+        diagnostics.push(`[Preview] Second build attempt succeeded`);
+      }
+    };
+
+    await runPrimaryBuild();
 
     let previewRoot = await findPreviewRoot(repoPath);
-    if (previewRoot && (await isStaticPreviewCompatible(previewRoot))) {
-      return previewRoot;
+    if (previewRoot) {
+      diagnostics.push(`[Preview] Found preview root: ${previewRoot}`);
+      if (await isStaticPreviewCompatible(previewRoot)) {
+        diagnostics.push(`[Preview] Preview is static-compatible - success!`);
+        console.log(diagnostics.join("\n"));
+        return previewRoot;
+      }
+      diagnostics.push(`[Preview] Preview root has source file references, not suitable`);
+    } else {
+      diagnostics.push(`[Preview] No preview root found after build`);
     }
 
-    if (hasDependency(manifest, "next")) {
+    if (!previewRoot && hasViteDependency) {
+      diagnostics.push("[Preview] Trying fallback build via npx vite build...");
+      try {
+        await runCommand(resolveCommandBinary("npx"), ["vite", "build"], repoPath, 240_000);
+        diagnostics.push("[Preview] npx vite build succeeded");
+      } catch (err) {
+        diagnostics.push(`[Preview] npx vite build failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+
+      previewRoot = await findPreviewRoot(repoPath);
+      if (previewRoot && (await isStaticPreviewCompatible(previewRoot))) {
+        diagnostics.push("[Preview] Found static-compatible preview after vite fallback build");
+        console.log(diagnostics.join("\n"));
+        return previewRoot;
+      }
+    }
+
+    if (hasDependency(manifest ?? {}, "next")) {
+      diagnostics.push(`[Preview] Next.js detected - attempting static export config...`);
       if (await ensureNextStaticExportConfig(repoPath)) {
+        diagnostics.push(`[Preview] Added output: "export" to next.config`);
         await disableUnsupportedNextExportRoutes(repoPath);
 
         try {
+          diagnostics.push(`[Preview] Running npm run build with static export config...`);
           await runCommand(resolveCommandBinary("npm"), ["run", "build"], repoPath, 360_000);
-        } catch {
-          // Build can still fail after forcing static export; fallback to other checks.
+          diagnostics.push(`[Preview] Build with static export succeeded`);
+        } catch (err) {
+          diagnostics.push(`[Preview] Static export build failed: ${err instanceof Error ? err.message : String(err)}`);
         }
 
         previewRoot = await findPreviewRoot(repoPath);
         if (previewRoot && (await isStaticPreviewCompatible(previewRoot))) {
+          diagnostics.push(`[Preview] Found static-compatible preview after Next.js export config`);
+          console.log(diagnostics.join("\n"));
           return previewRoot;
         }
       }
 
       try {
+        diagnostics.push(`[Preview] Attempting npx next export...`);
         await runCommand(resolveCommandBinary("npx"), ["next", "export"], repoPath, 180_000);
-      } catch {
-        // Ignore export errors and continue falling back to no-preview mode.
+        diagnostics.push(`[Preview] npx next export succeeded`);
+      } catch (err) {
+        diagnostics.push(`[Preview] npx next export failed: ${err instanceof Error ? err.message : String(err)}`);
       }
 
       previewRoot = await findPreviewRoot(repoPath);
       if (previewRoot && (await isStaticPreviewCompatible(previewRoot))) {
+        diagnostics.push(`[Preview] Found static-compatible preview after next export`);
+        console.log(diagnostics.join("\n"));
         return previewRoot;
       }
     }
-  } catch {
-    return null;
+    
+    diagnostics.push(`[Preview] Could not generate static preview - falling back to no-preview mode`);
+  } catch (err) {
+    diagnostics.push(`[Preview] Fatal error during build: ${err instanceof Error ? err.message : String(err)}`);
   }
 
+  console.log(diagnostics.join("\n"));
   return null;
 }
 
@@ -734,7 +866,65 @@ async function findPreviewRoot(repoPath: string): Promise<string | null> {
       return candidate;
     }
   }
-  return null;
+
+  const ignoredDirectories = new Set([
+    ".git",
+    ".github",
+    "node_modules",
+    ".next",
+    ".turbo",
+    "coverage",
+    "src",
+  ]);
+
+  const queue: Array<{ dir: string; depth: number }> = [{ dir: repoPath, depth: 0 }];
+  const discoveredCandidates: string[] = [];
+  const maxDepth = 4;
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) {
+      continue;
+    }
+
+    const entries = await readdir(current.dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(current.dir, entry.name);
+
+      if (entry.isFile() && entry.name === "index.html" && fullPath !== path.join(repoPath, "index.html")) {
+        discoveredCandidates.push(path.dirname(fullPath));
+        continue;
+      }
+
+      if (!entry.isDirectory()) {
+        continue;
+      }
+
+      if (ignoredDirectories.has(entry.name) || current.depth >= maxDepth) {
+        continue;
+      }
+
+      queue.push({ dir: fullPath, depth: current.depth + 1 });
+    }
+  }
+
+  if (discoveredCandidates.length === 0) {
+    return null;
+  }
+
+  const scoreCandidate = (candidate: string): number => {
+    const relative = path.relative(repoPath, candidate).replace(/\\/g, "/");
+    let score = 0;
+    if (/\b(dist|build|out|docs|www)\b/.test(relative)) {
+      score += 20;
+    }
+    const depth = relative.split("/").filter(Boolean).length;
+    score -= depth;
+    return score;
+  };
+
+  discoveredCandidates.sort((a, b) => scoreCandidate(b) - scoreCandidate(a));
+  return discoveredCandidates[0] ?? null;
 }
 
 async function isStaticPreviewCompatible(previewRoot: string): Promise<boolean> {
@@ -785,7 +975,7 @@ async function normalizeCopiedPreviewIndex(previewPath: string): Promise<void> {
     }
   }
 
-  // Inject floating back button to Toolbox home
+  // Inject floating home button for all imported previews.
   const floatingButtonCode = `
 <style>
 #toolbox-back-button {
@@ -814,10 +1004,14 @@ async function normalizeCopiedPreviewIndex(previewPath: string): Promise<void> {
   transform: translateY(0);
 }
 </style>
-<button id="toolbox-back-button">← Back to Toolbox</button>
+<button id="toolbox-back-button" type="button">⌂ Home</button>
 <script>
 document.getElementById("toolbox-back-button").addEventListener("click", function() {
-  window.location.href = "/";
+  if (window.top && window.top !== window) {
+    window.top.location.href = "/";
+    return;
+  }
+  window.location.assign("/");
 });
 </script>
 `;
@@ -1813,7 +2007,29 @@ async function recoverPreviewUrlForRepo(record: ImportedRepoRecord): Promise<str
   }
 
   if (!previewRoot) {
-    return null;
+    const tempBase = await mkdtemp(path.join(os.tmpdir(), "toolbox-preview-recover-"));
+    const tempRepoPath = path.join(tempBase, "repo");
+
+    try {
+      await runGitClone(record.repoUrl, tempRepoPath);
+
+      let clonedPreviewRoot = await findPreviewRoot(tempRepoPath);
+      if (clonedPreviewRoot && !(await isStaticPreviewCompatible(clonedPreviewRoot))) {
+        clonedPreviewRoot = null;
+      }
+
+      if (!clonedPreviewRoot) {
+        clonedPreviewRoot = await tryBuildPreviewRoot(tempRepoPath);
+      }
+
+      if (!clonedPreviewRoot) {
+        return null;
+      }
+
+      return await publishPreviewRoot(record.id, clonedPreviewRoot);
+    } finally {
+      await rm(tempBase, { recursive: true, force: true });
+    }
   }
 
   return await publishPreviewRoot(record.id, previewRoot);
@@ -1846,6 +2062,11 @@ export async function loadImportedRepos(): Promise<ImportedRepoRecord[]> {
   const normalized: ImportedRepoRecord[] = [];
 
   for (const record of parsed) {
+    const normalizedCategory = normalizeCategory(record.category);
+    if (normalizedCategory !== record.category) {
+      changed = true;
+    }
+
     const publishedPreviewPath = path.join(PUBLIC_ROOT, record.id);
     let previewHealth = record.previewHealth;
     if (!previewHealth && (record.previewUrl || (await exists(path.join(publishedPreviewPath, "index.html"))))) {
@@ -1856,6 +2077,7 @@ export async function loadImportedRepos(): Promise<ImportedRepoRecord[]> {
     if (record?.previewUrl) {
       normalized.push({
         ...record,
+        category: normalizedCategory,
         previewHealth,
       });
       continue;
@@ -1865,6 +2087,7 @@ export async function loadImportedRepos(): Promise<ImportedRepoRecord[]> {
     if (recoveredPreviewUrl) {
       normalized.push({
         ...record,
+        category: normalizedCategory,
         previewUrl: recoveredPreviewUrl,
         previewHealth,
       });
@@ -1874,6 +2097,7 @@ export async function loadImportedRepos(): Promise<ImportedRepoRecord[]> {
 
     normalized.push({
       ...record,
+      category: normalizedCategory,
       previewHealth,
     });
   }
@@ -2065,7 +2289,10 @@ async function scaffoldFeaturePackage(
   return { packageName, routePath, nativePlan };
 }
 
-export async function importRepository(repoUrl: string): Promise<ImportedRepoRecord> {
+export async function importRepository(
+  repoUrl: string,
+  options?: { category?: string },
+): Promise<ImportedRepoRecord> {
   const { owner, repo } = parseGitHubRepo(repoUrl);
   const id = `${owner}-${repo}`;
 
@@ -2094,6 +2321,19 @@ export async function importRepository(repoUrl: string): Promise<ImportedRepoRec
       previewRoot = await tryBuildPreviewRoot(tempRepoPath);
     }
 
+    // If temp build/export fails, retry from the synced local source folder.
+    // This path can reuse existing local dependencies and is often more reliable.
+    if (!previewRoot) {
+      previewRoot = await findPreviewRoot(sourcePath);
+      if (previewRoot && !(await isStaticPreviewCompatible(previewRoot))) {
+        previewRoot = null;
+      }
+
+      if (!previewRoot) {
+        previewRoot = await tryBuildPreviewRoot(sourcePath);
+      }
+    }
+
     let previewUrl: string | null = null;
     let previewHealth: PreviewHealthCheckResult | undefined;
     if (previewRoot) {
@@ -2109,6 +2349,7 @@ export async function importRepository(repoUrl: string): Promise<ImportedRepoRec
       id,
       name: repo,
       owner,
+      category: normalizeCategory(options?.category),
       repoUrl,
       importedAt: new Date().toISOString(),
       sourcePath: `packages/imported-repos/${id}`,
@@ -2129,6 +2370,29 @@ export async function importRepository(repoUrl: string): Promise<ImportedRepoRec
   }
 }
 
+export async function updateImportedRepositoryCategory(
+  repoId: string,
+  category: string,
+): Promise<ImportedRepoRecord> {
+  const sanitizedId = sanitizeSegment(repoId);
+  const records = await loadImportedRepos();
+  const repo = records.find((record) => record.id === sanitizedId);
+
+  if (!repo) {
+    throw new Error("Imported repository not found.");
+  }
+
+  const updatedRepo: ImportedRepoRecord = {
+    ...repo,
+    category: normalizeCategory(category),
+    lastUpdatedAt: new Date().toISOString(),
+  };
+
+  const nextRecords = records.map((record) => (record.id === repo.id ? updatedRepo : record));
+  await saveImportedRepos(nextRecords);
+  return updatedRepo;
+}
+
 export async function checkAndUpdateImportedRepository(repoId: string): Promise<UpdateImportedRepoResult> {
   const sanitizedId = sanitizeSegment(repoId);
   const records = await loadImportedRepos();
@@ -2139,7 +2403,10 @@ export async function checkAndUpdateImportedRepository(repoId: string): Promise<
   }
 
   const checkedAt = new Date().toISOString();
+  const trace: string[] = [];
+  trace.push(`check-start:${checkedAt}`);
   const remoteHead = await runGitLsRemoteHead(repo.repoUrl);
+  trace.push(`remote-head:${remoteHead ?? "null"}`);
 
   if (!remoteHead) {
     const unchanged: ImportedRepoRecord = {
@@ -2153,6 +2420,7 @@ export async function checkAndUpdateImportedRepository(repoId: string): Promise<
       remoteHead: null,
       upToDate: true,
       updated: false,
+      trace: [...trace, "finish:no-remote-head"],
     };
   }
 
@@ -2170,6 +2438,7 @@ export async function checkAndUpdateImportedRepository(repoId: string): Promise<
       remoteHead,
       upToDate: true,
       updated: false,
+      trace: [...trace, "finish:up-to-date"],
     };
   }
 
@@ -2177,30 +2446,59 @@ export async function checkAndUpdateImportedRepository(repoId: string): Promise<
   const tempRepoPath = path.join(tempBase, "repo");
 
   try {
+    trace.push("clone:start");
     await runGitClone(repo.repoUrl, tempRepoPath);
+    trace.push("clone:ok");
 
     const sourcePath = path.join(SOURCE_ROOT, repo.id);
     await mkdir(sourcePath, { recursive: true });
+    trace.push("source:ready");
+
+    // Remove previous build artifacts before syncing to avoid stale preview reuse.
+    // Keep other user-added files in sourcePath untouched.
+    await Promise.all([
+      rm(path.join(sourcePath, "dist"), { recursive: true, force: true }),
+      rm(path.join(sourcePath, "build"), { recursive: true, force: true }),
+      rm(path.join(sourcePath, "out"), { recursive: true, force: true }),
+      rm(path.join(sourcePath, ".next"), { recursive: true, force: true }),
+    ]);
+    trace.push("artifacts:cleaned");
 
     // Sync incoming files into the existing folder without deleting extras,
     // so user-added local files remain available.
     await copyDirectory(tempRepoPath, sourcePath);
+    trace.push("sync:ok");
 
     let previewRoot = await findPreviewRoot(tempRepoPath);
     if (previewRoot && !(await isStaticPreviewCompatible(previewRoot))) {
       previewRoot = null;
+      trace.push("preview-temp:incompatible");
     }
 
     if (!previewRoot) {
+      trace.push("build-temp:start");
       previewRoot = await tryBuildPreviewRoot(tempRepoPath);
+      trace.push(previewRoot ? "build-temp:ok" : "build-temp:failed");
+    }
+
+    // If temp build/export fails, retry from the synced local source folder.
+    // Force rebuild path here to avoid accidentally reusing stale local preview artifacts.
+    if (!previewRoot) {
+      trace.push("build-source:start");
+      previewRoot = await tryBuildPreviewRoot(sourcePath);
+      trace.push(previewRoot ? "build-source:ok" : "build-source:failed");
     }
 
     let previewUrl = repo.previewUrl;
     let previewHealth = repo.previewHealth;
     if (previewRoot) {
+      trace.push("publish:start");
       previewUrl = await publishPreviewRoot(repo.id, previewRoot);
       const previewPath = path.join(PUBLIC_ROOT, repo.id);
       previewHealth = await runPreviewHealthCheck(previewPath);
+      trace.push(`publish:ok:${previewUrl}`);
+    } else {
+      trace.push("publish:skipped-no-preview-root");
     }
 
     const readmeExcerpt = (await readReadme(tempRepoPath)) ?? repo.readmeExcerpt;
@@ -2223,6 +2521,7 @@ export async function checkAndUpdateImportedRepository(repoId: string): Promise<
       remoteHead,
       upToDate: false,
       updated: true,
+      trace: [...trace, "finish:updated"],
     };
   } finally {
     await rm(tempBase, { recursive: true, force: true });
@@ -2272,12 +2571,12 @@ export async function deleteImportedRepository(repoId: string): Promise<{ delete
     throw new Error("Imported repository not found.");
   }
 
-  await rm(path.join(SOURCE_ROOT, repo.id), { recursive: true, force: true });
-  await rm(path.join(PUBLIC_ROOT, repo.id), { recursive: true, force: true });
+  await removeDirectoryWithRetry(path.join(SOURCE_ROOT, repo.id));
+  await removeDirectoryWithRetry(path.join(PUBLIC_ROOT, repo.id));
 
   if (repo.activatedFeaturePackage) {
     const featurePackageDir = path.resolve(process.cwd(), "..", repo.activatedFeaturePackage);
-    await rm(featurePackageDir, { recursive: true, force: true });
+    await removeDirectoryWithRetry(featurePackageDir);
   }
 
   const nextRecords = records.filter((record) => record.id !== repo.id);

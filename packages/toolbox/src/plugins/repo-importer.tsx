@@ -20,6 +20,7 @@ const repoImporterPlugin: ToolboxPlugin = {
       label: "Repo Import",
       to: "/import",
       icon: "Import",
+      category: "Management",
     },
   ],
 };

@@ -8,12 +8,13 @@ import repoImporterPlugin from "./plugins/repo-importer";
  * 每個 feature-* 套件都應該匯出一個 ToolboxPlugin 物件
  */
 
-let registeredPlugins: ToolboxPlugin[] = [];
+const registeredPlugins: ToolboxPlugin[] = [];
 let pluginsInitialized = false;
 
 type ImportedRepoRecord = {
   id: string;
   name: string;
+  category?: string;
   previewUrl: string | null;
   importedAt: string;
   lastUpdatedAt?: string;
@@ -92,6 +93,7 @@ async function loadImportedRepoPlugins(): Promise<ToolboxPlugin[]> {
             {
               label: repo.name,
               to: routePath,
+              category: repo.category || "Imported",
             },
           ],
         } satisfies ToolboxPlugin;

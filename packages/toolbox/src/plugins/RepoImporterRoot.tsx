@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 type ImportedRepoRecord = {
   id: string;
   name: string;
   owner: string;
+  category?: string;
   repoUrl: string;
   importedAt: string;
   sourcePath: string;
@@ -104,13 +105,28 @@ export function RepoImporterRoot() {
   const navigate = useNavigate();
   const { repos, loading, error, refresh } = useImportedRepos();
   const [repoUrl, setRepoUrl] = useState("");
+  const [importCategory, setImportCategory] = useState("Imported");
   const [importing, setImporting] = useState(false);
   const [transformLevel, setTransformLevel] = useState<"strict" | "balanced" | "safe">("balanced");
   const [activatingRepoId, setActivatingRepoId] = useState<string | null>(null);
   const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
   const [checkingRepoId, setCheckingRepoId] = useState<string | null>(null);
+  const [savingCategoryRepoId, setSavingCategoryRepoId] = useState<string | null>(null);
+  const [categoryDrafts, setCategoryDrafts] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCategoryDrafts((current) => {
+      const next = { ...current };
+      repos.forEach((repo) => {
+        if (!next[repo.id]) {
+          next[repo.id] = repo.category || "Imported";
+        }
+      });
+      return next;
+    });
+  }, [repos]);
 
   const handleImport = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -128,7 +144,7 @@ export function RepoImporterRoot() {
       const response = await fetch("/api/repo-import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repoUrl: trimmed }),
+        body: JSON.stringify({ repoUrl: trimmed, category: importCategory }),
       });
 
       const data = (await response.json()) as {
@@ -145,6 +161,7 @@ export function RepoImporterRoot() {
         : "";
       setStatus(`Imported ${data.imported?.id ?? "repository"} successfully.${healthText}`);
       setRepoUrl("");
+      setImportCategory("Imported");
       await refresh();
     } catch (importError) {
       setSubmitError(importError instanceof Error ? importError.message : "Import failed.");
@@ -261,6 +278,7 @@ export function RepoImporterRoot() {
         updated?: boolean;
         upToDate?: boolean;
         repo?: ImportedRepoRecord;
+        trace?: string[];
         error?: string;
       };
 
@@ -268,12 +286,21 @@ export function RepoImporterRoot() {
         throw new Error(data.error || "Failed to check updates.");
       }
 
+      const traceText = Array.isArray(data.trace) && data.trace.length > 0
+        ? ` Steps: ${data.trace.slice(-6).join(" -> ")}`
+        : "";
+
       if (data.updated) {
-        setStatus(`Updated ${repo.name} with latest changes. Existing local data was preserved.`);
+        const previewChanged = Boolean(data.repo?.previewUrl) && data.repo?.previewUrl !== repo.previewUrl;
+        if (previewChanged) {
+          setStatus(`Updated ${repo.name} to the latest version and refreshed preview.${traceText}`);
+        } else {
+          setStatus(`Updated ${repo.name} source to latest version, but preview rebuild may have failed. Use Rebuild Preview on the project page.${traceText}`);
+        }
       } else if (data.upToDate) {
-        setStatus(`${repo.name} is already up to date.`);
+        setStatus(`${repo.name} is already up to date.${traceText}`);
       } else {
-        setStatus(`Checked ${repo.name} successfully.`);
+        setStatus(`Checked ${repo.name} successfully.${traceText}`);
       }
 
       await refresh();
@@ -281,6 +308,41 @@ export function RepoImporterRoot() {
       setSubmitError(updateError instanceof Error ? updateError.message : "Failed to check updates.");
     } finally {
       setCheckingRepoId(null);
+    }
+  };
+
+  const handleCategorySave = async (repo: ImportedRepoRecord) => {
+    const nextCategory = (categoryDrafts[repo.id] || "Imported").trim() || "Imported";
+    if ((repo.category || "Imported") === nextCategory) {
+      return;
+    }
+
+    setStatus(null);
+    setSubmitError(null);
+
+    try {
+      setSavingCategoryRepoId(repo.id);
+      const response = await fetch("/api/repo-import", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repoId: repo.id, category: nextCategory }),
+      });
+
+      const data = (await response.json()) as {
+        updated?: ImportedRepoRecord;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update category.");
+      }
+
+      setStatus(`Updated ${repo.name} category to ${data.updated?.category ?? nextCategory}.`);
+      await refresh();
+    } catch (categoryError) {
+      setSubmitError(categoryError instanceof Error ? categoryError.message : "Failed to update category.");
+    } finally {
+      setSavingCategoryRepoId(null);
     }
   };
 
@@ -330,6 +392,16 @@ export function RepoImporterRoot() {
               >
                 {importing ? "Importing..." : "Import Repository"}
               </button>
+              <label className="text-xs font-semibold text-slate-700" htmlFor="import-category">
+                Category
+              </label>
+              <input
+                id="import-category"
+                value={importCategory}
+                onChange={(event) => setImportCategory(event.target.value)}
+                placeholder="Imported"
+                className="h-11 min-w-40 rounded-xl border-2 border-slate-300 bg-white/90 px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-emerald-500"
+              />
               <p className="text-xs text-slate-600">Requires Git installed on this machine.</p>
             </div>
           </form>
@@ -365,6 +437,7 @@ export function RepoImporterRoot() {
                   <p className="mt-1 text-xs text-slate-600">Last checked: {formatDate(repo.lastCheckedAt)}</p>
                 ) : null}
                 <p className="mt-2 text-xs text-slate-600">Stored at: {repo.sourcePath}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-700">Category: {repo.category || "Imported"}</p>
                 {repo.lastSyncedCommit ? (
                   <p className="mt-1 font-mono text-[11px] text-slate-500">Commit: {repo.lastSyncedCommit.slice(0, 10)}</p>
                 ) : null}
@@ -393,6 +466,25 @@ export function RepoImporterRoot() {
                 ) : null}
 
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <input
+                    value={categoryDrafts[repo.id] ?? repo.category ?? "Imported"}
+                    onChange={(event) =>
+                      setCategoryDrafts((current) => ({
+                        ...current,
+                        [repo.id]: event.target.value,
+                      }))
+                    }
+                    aria-label={`Category for ${repo.name}`}
+                    className="h-9 min-w-32 rounded-lg border-2 border-slate-300 bg-white/90 px-2 text-xs font-semibold text-slate-700 outline-none transition focus:border-emerald-500"
+                  />
+                  <button
+                    type="button"
+                    disabled={savingCategoryRepoId === repo.id}
+                    onClick={() => handleCategorySave(repo)}
+                    className="rounded-lg border-2 border-indigo-300 bg-white/90 px-3 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {savingCategoryRepoId === repo.id ? "Saving..." : "Save Category"}
+                  </button>
                   <button
                     type="button"
                     disabled={checkingRepoId === repo.id}
